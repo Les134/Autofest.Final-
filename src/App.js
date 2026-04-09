@@ -129,4 +129,9 @@ const [allData, setAllData] = useState([]);
     </div>
   );
 }
-
+const loadLeaderboard = async () => {
+  const querySnapshot = await getDocs(collection(db, "scores"));
+  const data = querySnapshot.docs.map(doc => doc.data());
+  setAllData(data);
+  setView("leaderboard");
+};
