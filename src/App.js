@@ -175,11 +175,20 @@ export default function App() {
       {categories.map(cat=>(
         <div key={cat} style={{marginTop:10}}>
           <strong>{cat}</strong><br/>
-          {Array.from({length:21},(_,i)=>(
-            <button key={i} onClick={()=>setScore(cat,i)} style={{margin:2}}>
-              {i}
-            </button>
-          ))}
+         {Array.from({length:21},(_,i)=>(
+  <button
+    key={i}
+    onClick={()=>setScore(cat,i)}
+    style={{
+      margin:2,
+      background: scores[cat] === i ? "red" : "#ddd",
+      color: scores[cat] === i ? "white" : "black",
+      fontWeight: scores[cat] === i ? "bold" : "normal"
+    }}
+  >
+    {i}
+  </button>
+))}
         </div>
       ))}
 
