@@ -41,7 +41,6 @@ function Leaderboard({ data, title }) {
   return (
     <div style={{padding:20}}>
       <h2>{title}</h2>
-
       {sorted.map(([car,info],i)=>(
         <div key={car}>
           #{i+1} Car {car} - {info.driver} ({info.class}) : {info.total}
@@ -153,7 +152,7 @@ export default function App() {
     return (
       <div>
         <Leaderboard data={qualifying} title="Qualifying Leaderboard" />
-        <Leaderboard data={finals} title="🏆 FINALS RESULTS (WINNERS)" />
+        <Leaderboard data={finals} title="🏆 FINALS RESULTS" />
 
         <button onClick={() => setView("judge")} style={{margin:20,padding:10}}>
           Back
@@ -179,14 +178,41 @@ export default function App() {
 
       <div>
         <label>Gender: </label>
-        <button onClick={()=>setGender("Male")}>Male</button>
-        <button onClick={()=>setGender("Female")}>Female</button>
+        <button
+          onClick={()=>setGender("Male")}
+          style={{
+            background: gender==="Male" ? "blue" : "#ccc",
+            color: "white",
+            margin:5
+          }}
+        >
+          Male
+        </button>
+
+        <button
+          onClick={()=>setGender("Female")}
+          style={{
+            background: gender==="Female" ? "blue" : "#ccc",
+            color: "white",
+            margin:5
+          }}
+        >
+          Female
+        </button>
       </div>
 
       <div>
         <label>Class: </label>
         {classes.map(c=>(
-          <button key={c} onClick={()=>setCarClass(c)} style={{margin:5}}>
+          <button
+            key={c}
+            onClick={()=>setCarClass(c)}
+            style={{
+              background: carClass===c ? "gold" : "#ccc",
+              margin:5,
+              fontWeight: carClass===c ? "bold" : "normal"
+            }}
+          >
             {c}
           </button>
         ))}
@@ -202,7 +228,8 @@ export default function App() {
               key={i}
               onClick={()=>setScore(cat,i)}
               style={{
-                background: scores[cat]===i ? "red" : "#ccc",
+                background: scores[cat]===i ? "green" : "#ccc",
+                color: scores[cat]===i ? "white" : "black",
                 margin:2
               }}
             >
