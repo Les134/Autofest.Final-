@@ -14,22 +14,23 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const categories = ["Smoke","Commitment","Style","Control","Entertainment"]; 
+const categories = ["Smoke","Commitment","Style","Control","Entertainment"];
 
 function Leaderboard({ data }) {
   const totals = {};
 
   data.forEach(entry => {
-    const totalScore = Object.values(entry.scores || {}).reduce((a,b)=>a+b,0);
+    const totalScore = entry.totalScore || Object.values(entry.scores || {}).reduce((a,b)=>a+b,0);
+    const key = entry.car;
 
-    if (!totals[entry.car]) {
-      totals[entry.car] = {
+    if (!totals[key]) {
+      totals[key] = {
         driver: entry.driver,
         total: 0
       };
     }
 
-    totals[entry.car].total += totalScore;
+    totals[key].total += totalScore;
   });
 
   const sorted = Object.entries(totals)
@@ -81,9 +82,11 @@ export default function App() {
   };
 
   const submit = async ()=>{
-    if(!car || !driver || !gender){
-      return alert("Fill all fields");
+    if(!car || !driver || !gender || Object.keys(scores).length === 0){
+      return alert("Fill all fields and score");
     }
+
+    const totalScore = Object.values(scores).reduce((a,b)=>a+b,0);
 
     await addDoc(collection(db,"scores"),{
       judge,
@@ -91,6 +94,7 @@ export default function App() {
       driver,
       gender,
       scores,
+      totalScore,
       time:new Date()
     });
 
@@ -146,6 +150,10 @@ export default function App() {
 
       <button onClick={submit} style={{marginTop:20,padding:10}}>
         Submit Score
+      </button>
+
+      <button onClick={()=>setScores({})} style={{marginLeft:10,padding:10}}>
+        Clear Scores
       </button>
 
       <button onClick={loadLeaderboard} style={{marginTop:20,marginLeft:10,padding:10}}>
