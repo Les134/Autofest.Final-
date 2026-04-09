@@ -68,7 +68,8 @@ export default function App() {
   const setScore = (cat,val)=>{
     setScores({...scores,[cat]:val});
   };
-
+const [view, setView] = useState("judge");
+const [allData, setAllData] = useState([]);
   const submit = async ()=>{
     if(!car || !driver || !gender){
       return alert("Fill all fields");
