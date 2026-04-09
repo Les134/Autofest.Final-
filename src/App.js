@@ -172,25 +172,27 @@ export default function App() {
         <p>Selected: {carClass}</p>
       </div>
 
-      {categories.map(cat=>(
-        <div key={cat} style={{marginTop:10}}>
-          <strong>{cat}</strong><br/>
-         {Array.from({length:21},(_,i)=>(
-  <button
-    key={i}
-    onClick={()=>setScore(cat,i)}
-    style={{
-      margin:2,
-      background: scores[cat] === i ? "red" : "#ddd",
-      color: scores[cat] === i ? "white" : "black",
-      fontWeight: scores[cat] === i ? "bold" : "normal"
-    }}
-  >
-    {i}
-  </button>
+     {categories.map(cat=>(
+  <div key={cat} style={{marginTop:10}}>
+    <strong>{cat}</strong>
+    <p>Selected: {scores[cat] ?? "-"}</p>
+
+    {Array.from({length:21},(_,i)=>(
+      <button
+        key={i}
+        onClick={()=>setScore(cat,i)}
+        style={{
+          margin:2,
+          background: scores[cat] === i ? "red" : "#ddd",
+          color: scores[cat] === i ? "white" : "black",
+          fontWeight: scores[cat] === i ? "bold" : "normal"
+        }}
+      >
+        {i}
+      </button>
+    ))}
+  </div>
 ))}
-        </div>
-      ))}
 
       <button onClick={submit} style={{marginTop:20,padding:10}}>
         Submit Score
