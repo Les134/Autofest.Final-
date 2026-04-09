@@ -15,7 +15,36 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const categories = ["Smoke","Commitment","Style","Control","Entertainment"];
+function Leaderboard({ data }) {
+  const totals = {};
 
+  data.forEach(entry => {
+    const totalScore = Object.values(entry.scores || {}).reduce((a,b)=>a+b,0);
+
+    if (!totals[entry.car]) {
+      totals[entry.car] = {
+        driver: entry.driver,
+        total: 0
+      };
+    }
+
+    totals[entry.car].total += totalScore;
+  });
+
+  const sorted = Object.entries(totals)
+    .sort((a,b)=>b[1].total - a[1].total);
+
+  return (
+    <div style={{padding:20}}>
+      <h2>Leaderboard</h2>
+      {sorted.map(([car,info],i)=>(
+        <div key={car}>
+          #{i+1} Car {car} - {info.driver} : {info.total}
+        </div>
+      ))}
+    </div>
+  );
+}
 export default function App() {
   const [judge, setJudge] = useState(null);
   const [car, setCar] = useState("");
