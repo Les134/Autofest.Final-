@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, getDocs } from "firebase/firestore";
@@ -15,6 +16,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const categories = ["Smoke","Commitment","Style","Control","Entertainment"];
+const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","Rotary"];
 
 function Leaderboard({ data }) {
   const totals = {};
@@ -26,6 +28,7 @@ function Leaderboard({ data }) {
     if (!totals[key]) {
       totals[key] = {
         driver: entry.driver,
+        class: entry.carClass,
         total: 0
       };
     }
@@ -36,14 +39,33 @@ function Leaderboard({ data }) {
   const sorted = Object.entries(totals)
     .sort((a,b)=>b[1].total - a[1].total);
 
+  const top30 = sorted.slice(0,30);
+
   return (
     <div style={{padding:20}}>
-      <h2>Leaderboard</h2>
-      {sorted.map(([car,info],i)=>(
+      <h2>🏆 TOP 30</h2>
+      {top30.map(([car,info],i)=>(
         <div key={car}>
-          #{i+1} Car {car} - {info.driver} : {info.total}
+          #{i+1} Car {car} - {info.driver} ({info.class}) : {info.total}
         </div>
       ))}
+
+      <h2 style={{marginTop:30}}>📊 By Class</h2>
+
+      {classes.map(cls=>{
+        const classCars = sorted.filter(([_,info])=>info.class===cls);
+
+        return (
+          <div key={cls} style={{marginTop:20}}>
+            <h3>{cls}</h3>
+            {classCars.map(([car,info],i)=>(
+              <div key={car}>
+                #{i+1} Car {car} - {info.driver} : {info.total}
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -53,6 +75,7 @@ export default function App() {
   const [car, setCar] = useState("");
   const [driver, setDriver] = useState("");
   const [gender, setGender] = useState("");
+  const [carClass, setCarClass] = useState("");
   const [scores, setScores] = useState({});
   const [view, setView] = useState("judge");
   const [allData, setAllData] = useState([]);
@@ -82,8 +105,8 @@ export default function App() {
   };
 
   const submit = async ()=>{
-    if(!car || !driver || !gender || Object.keys(scores).length === 0){
-      return alert("Fill all fields and score");
+    if(!car || !driver || !gender || !carClass || Object.keys(scores).length === 0){
+      return alert("Fill all fields");
     }
 
     const totalScore = Object.values(scores).reduce((a,b)=>a+b,0);
@@ -93,6 +116,7 @@ export default function App() {
       car,
       driver,
       gender,
+      carClass,
       scores,
       totalScore,
       time:new Date()
@@ -103,6 +127,7 @@ export default function App() {
     setCar("");
     setDriver("");
     setGender("");
+    setCarClass("");
   };
 
   if (view === "leaderboard") {
@@ -135,6 +160,16 @@ export default function App() {
         <button onClick={()=>setGender("Male")}>Male</button>
         <button onClick={()=>setGender("Female")}>Female</button>
         <p>Selected: {gender}</p>
+      </div>
+
+      <div>
+        <label>Class: </label>
+        {classes.map(c=>(
+          <button key={c} onClick={()=>setCarClass(c)} style={{margin:5}}>
+            {c}
+          </button>
+        ))}
+        <p>Selected: {carClass}</p>
       </div>
 
       {categories.map(cat=>(
