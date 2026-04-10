@@ -14,7 +14,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// MATCHES YOUR SCORECARD
+// SCORECARD MATCH
 const categories = [
   { name: "Instant Smoke", max: 10 },
   { name: "Constant Smoke", max: 20 },
@@ -31,6 +31,14 @@ const deductionsList = [
   "Large Fire"
 ];
 
+const classes = [
+  "V8 Pro",
+  "V8 N/A",
+  "6 Cyl Pro",
+  "6 Cyl N/A",
+  "Rotary"
+];
+
 function Leaderboard({ data }) {
   const sorted = data.sort((a,b)=>b.finalScore - a.finalScore);
 
@@ -39,7 +47,7 @@ function Leaderboard({ data }) {
       <h2>🏆 Leaderboard</h2>
       {sorted.map((entry,i)=>(
         <div key={i}>
-          #{i+1} Car {entry.car} - {entry.driver} : {entry.finalScore}
+          #{i+1} Car {entry.car} - {entry.driver} ({entry.carClass}) : {entry.finalScore}
         </div>
       ))}
     </div>
@@ -47,13 +55,16 @@ function Leaderboard({ data }) {
 }
 
 export default function App() {
+  const [screen, setScreen] = useState("home");
   const [judge, setJudge] = useState(null);
+
   const [car, setCar] = useState("");
   const [driver, setDriver] = useState("");
   const [gender, setGender] = useState("");
+  const [carClass, setCarClass] = useState("");
+
   const [scores, setScores] = useState({});
   const [deductions, setDeductions] = useState({});
-  const [view, setView] = useState("judge");
   const [allData, setAllData] = useState([]);
 
   const setScore = (cat,val)=>{
@@ -71,11 +82,11 @@ export default function App() {
     const querySnapshot = await getDocs(collection(db, "scores"));
     const data = querySnapshot.docs.map(doc => doc.data());
     setAllData(data);
-    setView("leaderboard");
+    setScreen("leaderboard");
   };
 
   const submit = async ()=>{
-    if(!car || !driver || !gender){
+    if(!car || !driver || !gender || !carClass){
       return alert("Fill all fields");
     }
 
@@ -88,6 +99,7 @@ export default function App() {
       car,
       driver,
       gender,
+      carClass,
       scores,
       deductions,
       totalScore,
@@ -103,14 +115,28 @@ export default function App() {
     setCar("");
     setDriver("");
     setGender("");
+    setCarClass("");
   };
 
-  if (!judge) {
+  // HOME SCREEN
+  if (screen === "home") {
     return (
-      <div style={{padding:40,textAlign:"center"}}>
+      <div style={{textAlign:"center",padding:50}}>
+        <h1>🔥 AutoFest Burnout Champs</h1>
+        <button onClick={()=>setScreen("judgeSelect")} style={{padding:20}}>
+          Start Judging
+        </button>
+      </div>
+    );
+  }
+
+  // JUDGE SELECT
+  if (screen === "judgeSelect") {
+    return (
+      <div style={{textAlign:"center",padding:40}}>
         <h1>Select Judge</h1>
         {[1,2,3,4,5,6].map(j=>(
-          <button key={j} onClick={()=>setJudge(j)} style={{margin:10,padding:20}}>
+          <button key={j} onClick={()=>{setJudge(j); setScreen("judge");}} style={{margin:10,padding:20}}>
             Judge {j}
           </button>
         ))}
@@ -118,15 +144,17 @@ export default function App() {
     );
   }
 
-  if (view === "leaderboard") {
+  // LEADERBOARD
+  if (screen === "leaderboard") {
     return (
       <div>
         <Leaderboard data={allData} />
-        <button onClick={() => setView("judge")}>Back</button>
+        <button onClick={()=>setScreen("judge")}>Back</button>
       </div>
     );
   }
 
+  // JUDGING SCREEN
   const totalScore = Object.values(scores).reduce((a,b)=>a+b,0);
   const totalDeductions = Object.values(deductions).filter(v=>v).length * 10;
   const finalScore = totalScore - totalDeductions;
@@ -143,6 +171,16 @@ export default function App() {
         <button onClick={()=>setGender("Male")}>Male</button>
         <button onClick={()=>setGender("Female")}>Female</button>
         <p>{gender}</p>
+      </div>
+
+      <div>
+        <h3>Class</h3>
+        {classes.map(c=>(
+          <button key={c} onClick={()=>setCarClass(c)} style={{margin:5}}>
+            {c}
+          </button>
+        ))}
+        <p>{carClass}</p>
       </div>
 
       <h3>POINT ALLOCATIONS</h3>
@@ -168,7 +206,7 @@ export default function App() {
         </div>
       ))}
 
-      <h3>POINT DEDUCTIONS</h3>
+      <h3>🚫 POINT DEDUCTIONS</h3>
 
       {deductionsList.map(d=>(
         <button
@@ -185,11 +223,10 @@ export default function App() {
       ))}
 
       <h3>Total Allocation: {totalScore} /110</h3>
-      <h3>Total Deductions: -{totalDeductions}</h3>
+      <h3>Deductions: -{totalDeductions}</h3>
       <h2>FINAL SCORE: {finalScore}</h2>
 
-      <button onClick={submit}>Submit Score</button>
-      <button onClick={()=>setScores({})}>Clear Scores</button>
+      <button onClick={submit}>Submit</button>
       <button onClick={loadLeaderboard}>Leaderboard</button>
 
     </div>
