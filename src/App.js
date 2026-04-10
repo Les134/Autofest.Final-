@@ -134,15 +134,17 @@ export default function App() {
         height:"100vh",
         paddingTop:40
       }}>
-<img 
-  src="https://i.ibb.co/0yh124d4/BURNOUT-CHAMPS-SCORING.png" 
-  alt="logo" 
-  style={{
-    width: "90%",
-    maxWidth: "420px",
-    height: "auto",
-    marginBottom: "20px"
-  }}
+<div style={{marginBottom: 30}}>
+  <img 
+    src="https://i.ibb.co/0yh124d4/BURNOUT-CHAMPS-SCORING.png" 
+    alt="logo" 
+    style={{
+      width: "90%",
+      maxWidth: "420px",
+      height: "auto"
+    }}
+  />
+</div>
 />
 
         <div style={{marginTop:40}}>
