@@ -21,9 +21,7 @@ function Leaderboard({ data, title }) {
   const totals = {};
 
   data.forEach(entry => {
-    const totalScore = entry.totalScore || 0;
     const key = entry.car;
-
     if (!totals[key]) {
       totals[key] = {
         driver: entry.driver,
@@ -31,12 +29,10 @@ function Leaderboard({ data, title }) {
         total: 0
       };
     }
-
-    totals[key].total += totalScore;
+    totals[key].total += entry.totalScore || 0;
   });
 
-  const sorted = Object.entries(totals)
-    .sort((a,b)=>b[1].total - a[1].total);
+  const sorted = Object.entries(totals).sort((a,b)=>b[1].total - a[1].total);
 
   return (
     <div style={{padding:20}}>
@@ -51,29 +47,16 @@ function Leaderboard({ data, title }) {
 }
 
 export default function App() {
+  const [screen, setScreen] = useState("home");
   const [judge, setJudge] = useState(null);
   const [car, setCar] = useState("");
   const [driver, setDriver] = useState("");
   const [gender, setGender] = useState("");
   const [carClass, setCarClass] = useState("");
   const [scores, setScores] = useState({});
-  const [view, setView] = useState("judge");
   const [mode, setMode] = useState("qualifying");
   const [allData, setAllData] = useState([]);
   const [finalists, setFinalists] = useState([]);
-
-  if (!judge) {
-    return (
-      <div style={{padding:40,textAlign:"center"}}>
-        <h1>Select Judge</h1>
-        {[1,2,3,4,5,6].map(j=>(
-          <button key={j} onClick={()=>setJudge(j)} style={{margin:10,padding:20}}>
-            Judge {j}
-          </button>
-        ))}
-      </div>
-    );
-  }
 
   const setScore = (cat,val)=>{
     setScores({...scores,[cat]:val});
@@ -83,7 +66,7 @@ export default function App() {
     const querySnapshot = await getDocs(collection(db, "scores"));
     const data = querySnapshot.docs.map(doc => doc.data());
     setAllData(data);
-    setView("leaderboard");
+    setScreen("leaderboard");
   };
 
   const generateFinalists = async () => {
@@ -91,7 +74,6 @@ export default function App() {
     const data = querySnapshot.docs.map(doc => doc.data());
 
     const totals = {};
-
     data.filter(d=>d.round==="qualifying").forEach(entry => {
       if (!totals[entry.car]) {
         totals[entry.car] = {
@@ -103,14 +85,11 @@ export default function App() {
       totals[entry.car].total += entry.totalScore;
     });
 
-    const sorted = Object.entries(totals)
-      .sort((a,b)=>b[1].total - a[1].total);
-
-    const top30 = sorted.slice(0,30);
-    setFinalists(top30);
+    const sorted = Object.entries(totals).sort((a,b)=>b[1].total - a[1].total);
+    setFinalists(sorted.slice(0,30));
     setMode("finals");
 
-    alert("Top 30 locked in. Finals ready.");
+    alert("Top 30 locked. Finals ready.");
   };
 
   const submit = async ()=>{
@@ -145,74 +124,80 @@ export default function App() {
     setCarClass("");
   };
 
-  if (view === "leaderboard") {
+  // 🏁 HOME SCREEN WITH LOGO
+  if (screen === "home") {
+    return (
+      <div style={{
+        textAlign:"center",
+        background:"#000",
+        color:"#fff",
+        height:"100vh",
+        paddingTop:40
+      }}>
+        <img src="/logo.png" alt="logo" style={{width:"80%", maxWidth:500}} />
+
+        <div style={{marginTop:40}}>
+          <button onClick={()=>setScreen("judge")} style={btnStyle}>
+            START JUDGING
+          </button>
+
+          <button onClick={loadLeaderboard} style={btnStyle}>
+            LEADERBOARD
+          </button>
+
+          <button onClick={generateFinalists} style={btnStyle}>
+            START TOP 30 FINALS
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === "leaderboard") {
     const qualifying = allData.filter(d=>d.round==="qualifying");
     const finals = allData.filter(d=>d.round==="finals");
 
     return (
-      <div>
-        <Leaderboard data={qualifying} title="Qualifying Leaderboard" />
-        <Leaderboard data={finals} title="🏆 FINALS RESULTS" />
+      <div style={{background:"#000", color:"#fff", minHeight:"100vh"}}>
+        <Leaderboard data={qualifying} title="Qualifying" />
+        <Leaderboard data={finals} title="🏆 Finals Results" />
 
-        <button onClick={() => setView("judge")} style={{margin:20,padding:10}}>
-          Back
+        <button onClick={()=>setScreen("home")} style={btnStyle}>
+          BACK
         </button>
+      </div>
+    );
+  }
+
+  if (!judge) {
+    return (
+      <div style={{textAlign:"center", padding:40}}>
+        <h2>Select Judge</h2>
+        {[1,2,3,4,5,6].map(j=>(
+          <button key={j} onClick={()=>setJudge(j)} style={btnStyle}>
+            Judge {j}
+          </button>
+        ))}
       </div>
     );
   }
 
   return (
     <div style={{padding:20}}>
-      <h2>Judge {judge}</h2>
-      <h3>Mode: {mode.toUpperCase()}</h3>
+      <h2>Judge {judge} ({mode})</h2>
+
+      <input placeholder="Car #" value={car} onChange={(e)=>setCar(e.target.value)} />
+      <input placeholder="Driver" value={driver} onChange={(e)=>setDriver(e.target.value)} />
 
       <div>
-        <label>Car #: </label>
-        <input value={car} onChange={(e)=>setCar(e.target.value)} />
+        <button onClick={()=>setGender("Male")} style={{background:gender==="Male"?"blue":"#ccc"}}>Male</button>
+        <button onClick={()=>setGender("Female")} style={{background:gender==="Female"?"blue":"#ccc"}}>Female</button>
       </div>
 
       <div>
-        <label>Driver: </label>
-        <input value={driver} onChange={(e)=>setDriver(e.target.value)} />
-      </div>
-
-      <div>
-        <label>Gender: </label>
-        <button
-          onClick={()=>setGender("Male")}
-          style={{
-            background: gender==="Male" ? "blue" : "#ccc",
-            color: "white",
-            margin:5
-          }}
-        >
-          Male
-        </button>
-
-        <button
-          onClick={()=>setGender("Female")}
-          style={{
-            background: gender==="Female" ? "blue" : "#ccc",
-            color: "white",
-            margin:5
-          }}
-        >
-          Female
-        </button>
-      </div>
-
-      <div>
-        <label>Class: </label>
         {classes.map(c=>(
-          <button
-            key={c}
-            onClick={()=>setCarClass(c)}
-            style={{
-              background: carClass===c ? "gold" : "#ccc",
-              margin:5,
-              fontWeight: carClass===c ? "bold" : "normal"
-            }}
-          >
+          <button key={c} onClick={()=>setCarClass(c)}
+            style={{background:carClass===c?"gold":"#ccc", margin:5}}>
             {c}
           </button>
         ))}
@@ -221,28 +206,28 @@ export default function App() {
       {categories.map(cat=>(
         <div key={cat}>
           <strong>{cat}</strong>
-          <p>Selected: {scores[cat] ?? "-"}</p>
-
           {Array.from({length:21},(_,i)=>(
-            <button
-              key={i}
+            <button key={i}
               onClick={()=>setScore(cat,i)}
-              style={{
-                background: scores[cat]===i ? "green" : "#ccc",
-                color: scores[cat]===i ? "white" : "black",
-                margin:2
-              }}
-            >
+              style={{background:scores[cat]===i?"green":"#ccc", margin:2}}>
               {i}
             </button>
           ))}
         </div>
       ))}
 
-      <button onClick={submit} style={{marginTop:20}}>Submit</button>
-      <button onClick={()=>setScores({})}>Clear</button>
-      <button onClick={loadLeaderboard}>Leaderboard</button>
-      <button onClick={generateFinalists}>Start Top 30 Finals</button>
+      <button onClick={submit} style={btnStyle}>Submit</button>
+      <button onClick={()=>setScreen("home")} style={btnStyle}>Back</button>
     </div>
   );
 }
+
+const btnStyle = {
+  padding:20,
+  margin:10,
+  fontSize:18,
+  background:"#111",
+  color:"#fff",
+  border:"2px solid red",
+  borderRadius:10
+};
