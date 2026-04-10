@@ -14,13 +14,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// SCORECARD MATCH
+// UPDATED SCORECARD
 const categories = [
   { name: "Instant Smoke", max: 10 },
   { name: "Constant Smoke", max: 20 },
   { name: "Volume", max: 20 },
   { name: "Driving Skill", max: 50 },
-  { name: "Blown Tyres", max: 10 }
+  { name: "Blown Tyres", max: 20 } // FIXED
 ];
 
 const deductionsList = [
@@ -31,20 +31,16 @@ const deductionsList = [
   "Large Fire"
 ];
 
-const classes = [
-  "V8 Pro",
-  "V8 N/A",
-  "6 Cyl Pro",
-  "6 Cyl N/A",
-  "Rotary"
-];
+const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","Rotary"];
 
 function Leaderboard({ data }) {
-  const sorted = data.sort((a,b)=>b.finalScore - a.finalScore);
+  const sorted = data
+    .sort((a,b)=>b.finalScore - a.finalScore)
+    .slice(0,30); // TOP 30
 
   return (
     <div style={{padding:20}}>
-      <h2>🏆 Leaderboard</h2>
+      <h2>🏆 TOP 30 QUALIFIERS</h2>
       {sorted.map((entry,i)=>(
         <div key={i}>
           #{i+1} Car {entry.car} - {entry.driver} ({entry.carClass}) : {entry.finalScore}
@@ -118,11 +114,12 @@ export default function App() {
     setCarClass("");
   };
 
-  // HOME SCREEN
+  // HOME
   if (screen === "home") {
     return (
-      <div style={{textAlign:"center",padding:50}}>
-        <h1>🔥 AutoFest Burnout Champs</h1>
+      <div style={{textAlign:"center",padding:40}}>
+        <img src="/logo.png" alt="logo" style={{width:200}} />
+        <h1>AutoFest Series Burnout Champs</h1>
         <button onClick={()=>setScreen("judgeSelect")} style={{padding:20}}>
           Start Judging
         </button>
@@ -154,7 +151,6 @@ export default function App() {
     );
   }
 
-  // JUDGING SCREEN
   const totalScore = Object.values(scores).reduce((a,b)=>a+b,0);
   const totalDeductions = Object.values(deductions).filter(v=>v).length * 10;
   const finalScore = totalScore - totalDeductions;
@@ -168,19 +164,28 @@ export default function App() {
       <input placeholder="Driver Name" value={driver} onChange={e=>setDriver(e.target.value)} />
 
       <div>
-        <button onClick={()=>setGender("Male")}>Male</button>
-        <button onClick={()=>setGender("Female")}>Female</button>
-        <p>{gender}</p>
+        <button 
+          onClick={()=>setGender("Male")}
+          style={{background: gender==="Male" ? "green" : "#ddd"}}
+        >Male</button>
+
+        <button 
+          onClick={()=>setGender("Female")}
+          style={{background: gender==="Female" ? "green" : "#ddd"}}
+        >Female</button>
       </div>
 
       <div>
         <h3>Class</h3>
         {classes.map(c=>(
-          <button key={c} onClick={()=>setCarClass(c)} style={{margin:5}}>
+          <button
+            key={c}
+            onClick={()=>setCarClass(c)}
+            style={{background: carClass===c ? "blue" : "#ddd", color:"white", margin:5}}
+          >
             {c}
           </button>
         ))}
-        <p>{carClass}</p>
       </div>
 
       <h3>POINT ALLOCATIONS</h3>
@@ -188,7 +193,6 @@ export default function App() {
       {categories.map(cat=>(
         <div key={cat.name}>
           <strong>{cat.name} (/{cat.max})</strong>
-          <p>Selected: {scores[cat.name] ?? "-"}</p>
 
           {Array.from({length:cat.max+1},(_,i)=>(
             <button
@@ -196,8 +200,7 @@ export default function App() {
               onClick={()=>setScore(cat.name,i)}
               style={{
                 margin:2,
-                background: scores[cat.name] === i ? "red" : "#ccc",
-                color: scores[cat.name] === i ? "white" : "black"
+                background: scores[cat.name]===i ? "red" : "#ccc"
               }}
             >
               {i}
@@ -206,7 +209,7 @@ export default function App() {
         </div>
       ))}
 
-      <h3>🚫 POINT DEDUCTIONS</h3>
+      <h3>🚫 DEDUCTIONS</h3>
 
       {deductionsList.map(d=>(
         <button
@@ -214,7 +217,7 @@ export default function App() {
           onClick={()=>toggleDeduction(d)}
           style={{
             margin:5,
-            background: deductions[d] ? "black" : "#ddd",
+            background: deductions[d] ? "red" : "#ddd",
             color: deductions[d] ? "white" : "black"
           }}
         >
@@ -222,12 +225,12 @@ export default function App() {
         </button>
       ))}
 
-      <h3>Total Allocation: {totalScore} /110</h3>
+      <h3>Total: {totalScore}</h3>
       <h3>Deductions: -{totalDeductions}</h3>
-      <h2>FINAL SCORE: {finalScore}</h2>
+      <h2>FINAL: {finalScore}</h2>
 
       <button onClick={submit}>Submit</button>
-      <button onClick={loadLeaderboard}>Leaderboard</button>
+      <button onClick={loadLeaderboard}>Top 30</button>
 
     </div>
   );
