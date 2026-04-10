@@ -19,8 +19,8 @@ const categories = [
   { name: "Instant Smoke", max: 10 },
   { name: "Constant Smoke", max: 20 },
   { name: "Volume", max: 20 },
-  { name: "Driving Skill", max: 50 },
-  { name: "Blown Tyres", max: 20 } // FIXED
+  { name: "Driving Skill", max: 20 }, // FIXED
+  { name: "Blown Tyres", max: 20 }
 ];
 
 const deductionsList = [
@@ -36,14 +36,14 @@ const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","Rotary"];
 function Leaderboard({ data }) {
   const sorted = data
     .sort((a,b)=>b.finalScore - a.finalScore)
-    .slice(0,30); // TOP 30
+    .slice(0,30);
 
   return (
     <div style={{padding:20}}>
       <h2>🏆 TOP 30 QUALIFIERS</h2>
       {sorted.map((entry,i)=>(
-        <div key={i}>
-          #{i+1} Car {entry.car} - {entry.driver} ({entry.carClass}) : {entry.finalScore}
+        <div key={i} style={{marginBottom:10}}>
+          #{i+1} Car {entry.car} - {entry.driver} ({entry.carName}) [{entry.rego}] : {entry.finalScore}
         </div>
       ))}
     </div>
@@ -56,6 +56,9 @@ export default function App() {
 
   const [car, setCar] = useState("");
   const [driver, setDriver] = useState("");
+  const [rego, setRego] = useState("");
+  const [carName, setCarName] = useState("");
+
   const [gender, setGender] = useState("");
   const [carClass, setCarClass] = useState("");
 
@@ -82,7 +85,7 @@ export default function App() {
   };
 
   const submit = async ()=>{
-    if(!car || !driver || !gender || !carClass){
+    if(!car || !driver || !rego || !carName || !gender || !carClass){
       return alert("Fill all fields");
     }
 
@@ -94,6 +97,8 @@ export default function App() {
       judge,
       car,
       driver,
+      rego,
+      carName,
       gender,
       carClass,
       scores,
@@ -110,6 +115,8 @@ export default function App() {
     setDeductions({});
     setCar("");
     setDriver("");
+    setRego("");
+    setCarName("");
     setGender("");
     setCarClass("");
   };
@@ -120,7 +127,7 @@ export default function App() {
       <div style={{textAlign:"center",padding:40}}>
         <img src="/logo.png" alt="logo" style={{width:200}} />
         <h1>AutoFest Series Burnout Champs</h1>
-        <button onClick={()=>setScreen("judgeSelect")} style={{padding:20}}>
+        <button onClick={()=>setScreen("judgeSelect")} style={{padding:20,fontSize:18}}>
           Start Judging
         </button>
       </div>
@@ -133,7 +140,7 @@ export default function App() {
       <div style={{textAlign:"center",padding:40}}>
         <h1>Select Judge</h1>
         {[1,2,3,4,5,6].map(j=>(
-          <button key={j} onClick={()=>{setJudge(j); setScreen("judge");}} style={{margin:10,padding:20}}>
+          <button key={j} onClick={()=>{setJudge(j); setScreen("judge");}} style={{margin:10,padding:20,fontSize:18}}>
             Judge {j}
           </button>
         ))}
@@ -162,17 +169,12 @@ export default function App() {
 
       <input placeholder="Car #" value={car} onChange={e=>setCar(e.target.value)} />
       <input placeholder="Driver Name" value={driver} onChange={e=>setDriver(e.target.value)} />
+      <input placeholder="Rego No" value={rego} onChange={e=>setRego(e.target.value)} />
+      <input placeholder="Car Name" value={carName} onChange={e=>setCarName(e.target.value)} />
 
-      <div>
-        <button 
-          onClick={()=>setGender("Male")}
-          style={{background: gender==="Male" ? "green" : "#ddd"}}
-        >Male</button>
-
-        <button 
-          onClick={()=>setGender("Female")}
-          style={{background: gender==="Female" ? "green" : "#ddd"}}
-        >Female</button>
+      <div style={{marginTop:10}}>
+        <button onClick={()=>setGender("Male")} style={{background: gender==="Male"?"green":"#ddd", padding:10, margin:5}}>Male</button>
+        <button onClick={()=>setGender("Female")} style={{background: gender==="Female"?"green":"#ddd", padding:10, margin:5}}>Female</button>
       </div>
 
       <div>
@@ -181,7 +183,12 @@ export default function App() {
           <button
             key={c}
             onClick={()=>setCarClass(c)}
-            style={{background: carClass===c ? "blue" : "#ddd", color:"white", margin:5}}
+            style={{
+              background: carClass===c ? "blue" : "#ddd",
+              color:"white",
+              padding:10,
+              margin:5
+            }}
           >
             {c}
           </button>
@@ -191,21 +198,25 @@ export default function App() {
       <h3>POINT ALLOCATIONS</h3>
 
       {categories.map(cat=>(
-        <div key={cat.name}>
+        <div key={cat.name} style={{marginBottom:25}}>
           <strong>{cat.name} (/{cat.max})</strong>
 
-          {Array.from({length:cat.max+1},(_,i)=>(
-            <button
-              key={i}
-              onClick={()=>setScore(cat.name,i)}
-              style={{
-                margin:2,
-                background: scores[cat.name]===i ? "red" : "#ccc"
-              }}
-            >
-              {i}
-            </button>
-          ))}
+          <div style={{marginTop:10}}>
+            {Array.from({length:cat.max+1},(_,i)=>(
+              <button
+                key={i}
+                onClick={()=>setScore(cat.name,i)}
+                style={{
+                  margin:4,
+                  padding:12,
+                  fontSize:16,
+                  background: scores[cat.name]===i ? "red" : "#ccc"
+                }}
+              >
+                {i}
+              </button>
+            ))}
+          </div>
         </div>
       ))}
 
@@ -216,9 +227,10 @@ export default function App() {
           key={d}
           onClick={()=>toggleDeduction(d)}
           style={{
-            margin:5,
-            background: deductions[d] ? "red" : "#ddd",
-            color: deductions[d] ? "white" : "black"
+            margin:6,
+            padding:12,
+            fontSize:16,
+            background: deductions[d] ? "red" : "#ddd"
           }}
         >
           {d} (-10)
@@ -229,8 +241,8 @@ export default function App() {
       <h3>Deductions: -{totalDeductions}</h3>
       <h2>FINAL: {finalScore}</h2>
 
-      <button onClick={submit}>Submit</button>
-      <button onClick={loadLeaderboard}>Top 30</button>
+      <button onClick={submit} style={{padding:15, fontSize:18}}>Submit</button>
+      <button onClick={loadLeaderboard} style={{padding:15, fontSize:18, marginLeft:10}}>Top 30</button>
 
     </div>
   );
