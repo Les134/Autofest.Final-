@@ -38,7 +38,7 @@ function Leaderboard({ data, title }) {
     <div style={{padding:20}}>
       <h2>{title}</h2>
       {sorted.map(([car,info],i)=>(
-        <div key={car}>
+        <div key={car} style={{padding:10, borderBottom:"1px solid #333"}}>
           #{i+1} Car {car} - {info.driver} ({info.class}) : {info.total}
         </div>
       ))}
@@ -124,41 +124,31 @@ export default function App() {
     setCarClass("");
   };
 
-  // 🏁 HOME SCREEN WITH LOGO
+  // 🏁 HOME
   if (screen === "home") {
     return (
       <div style={{
         textAlign:"center",
         background:"#000",
         color:"#fff",
-        height:"100vh",
-        paddingTop:40
+        minHeight:"100vh",
+        padding:"40px 20px"
       }}>
-<div style={{marginBottom: 30}}>
-  <img 
-    src="https://i.ibb.co/0yh124d4/BURNOUT-CHAMPS-SCORING.png" 
-    alt="logo" 
-    style={{
-      width: "90%",
-      maxWidth: "420px",
-      height: "auto"
-    }}
-  />
-</div>
-/>
 
-        <div style={{marginTop:40}}>
-          <button onClick={()=>setScreen("judge")} style={btnStyle}>
-            START JUDGING
-          </button>
+        <img 
+          src="https://i.ibb.co/0yh124d4/BURNOUT-CHAMPS-SCORING.png" 
+          alt="logo"
+          style={{
+            width:"90%",
+            maxWidth:"420px",
+            marginBottom:"30px"
+          }}
+        />
 
-          <button onClick={loadLeaderboard} style={btnStyle}>
-            LEADERBOARD
-          </button>
-
-          <button onClick={generateFinalists} style={btnStyle}>
-            START TOP 30 FINALS
-          </button>
+        <div>
+          <button onClick={()=>setScreen("judge")} style={btnStyle}>START JUDGING</button>
+          <button onClick={loadLeaderboard} style={btnStyle}>LEADERBOARD</button>
+          <button onClick={generateFinalists} style={btnStyle}>START TOP 30 FINALS</button>
         </div>
       </div>
     );
@@ -170,12 +160,10 @@ export default function App() {
 
     return (
       <div style={{background:"#000", color:"#fff", minHeight:"100vh"}}>
-        <Leaderboard data={qualifying} title="Qualifying" />
-        <Leaderboard data={finals} title="🏆 Finals Results" />
+        <Leaderboard data={qualifying} title="QUALIFYING" />
+        <Leaderboard data={finals} title="🏆 FINALS RESULTS" />
 
-        <button onClick={()=>setScreen("home")} style={btnStyle}>
-          BACK
-        </button>
+        <button onClick={()=>setScreen("home")} style={btnStyle}>BACK</button>
       </div>
     );
   }
@@ -195,14 +183,14 @@ export default function App() {
 
   return (
     <div style={{padding:20}}>
-      <h2>Judge {judge} ({mode})</h2>
+      <h2>Judge {judge} ({mode.toUpperCase()})</h2>
 
       <input placeholder="Car #" value={car} onChange={(e)=>setCar(e.target.value)} />
       <input placeholder="Driver" value={driver} onChange={(e)=>setDriver(e.target.value)} />
 
       <div>
-        <button onClick={()=>setGender("Male")} style={{background:gender==="Male"?"blue":"#ccc"}}>Male</button>
-        <button onClick={()=>setGender("Female")} style={{background:gender==="Female"?"blue":"#ccc"}}>Female</button>
+        <button onClick={()=>setGender("Male")} style={{background:gender==="Male"?"blue":"#ccc", margin:5}}>Male</button>
+        <button onClick={()=>setGender("Female")} style={{background:gender==="Female"?"blue":"#ccc", margin:5}}>Female</button>
       </div>
 
       <div>
@@ -215,20 +203,26 @@ export default function App() {
       </div>
 
       {categories.map(cat=>(
-        <div key={cat}>
+        <div key={cat} style={{marginTop:15}}>
           <strong>{cat}</strong>
-          {Array.from({length:21},(_,i)=>(
-            <button key={i}
-              onClick={()=>setScore(cat,i)}
-              style={{background:scores[cat]===i?"green":"#ccc", margin:2}}>
-              {i}
-            </button>
-          ))}
+          <div>
+            {Array.from({length:21},(_,i)=>(
+              <button key={i}
+                onClick={()=>setScore(cat,i)}
+                style={{
+                  background:scores[cat]===i?"green":"#ccc",
+                  margin:2,
+                  padding:8
+                }}>
+                {i}
+              </button>
+            ))}
+          </div>
         </div>
       ))}
 
-      <button onClick={submit} style={btnStyle}>Submit</button>
-      <button onClick={()=>setScreen("home")} style={btnStyle}>Back</button>
+      <button onClick={submit} style={btnStyle}>SUBMIT</button>
+      <button onClick={()=>setScreen("home")} style={btnStyle}>BACK</button>
     </div>
   );
 }
