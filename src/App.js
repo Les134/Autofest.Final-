@@ -2,238 +2,240 @@ import React, { useState } from "react";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, getDocs } from "firebase/firestore";
 
+// 🔥 FIREBASE CONFIG
 const firebaseConfig = {
-  apiKey: "AIzaSyB5NhDJMBwhMpUUL3XIHUnISTuCeQkXKS8",
-  authDomain: "autofest-burnout-judging-848fd.firebaseapp.com",
-  projectId: "autofest-burnout-judging-848fd",
-  storageBucket: "autofest-burnout-judging-848fd.firebasestorage.app",
-  messagingSenderId: "742211958318",
-  appId: "1:742211958318:web:648c2bfd5b4e2af09391bf"
+apiKey: "AIzaSyB5NhDJMBwhMpUUL3XIHUnISTuCeQkXKS8",
+authDomain: "autofest-burnout-judging-848fd.firebaseapp.com",
+projectId: "autofest-burnout-judging-848fd",
+storageBucket: "autofest-burnout-judging-848fd.firebasestorage.app",
+messagingSenderId: "742211958318",
+appId: "1:742211958318:web:648c2bfd5b4e2af09391bf"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// 🔥 SCORING CATEGORIES
 const categories = ["Smoke","Commitment","Style","Control","Entertainment"];
-const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","Rotary"];
 
-function Leaderboard({ data, title }) {
-  const totals = {};
+// ================= HOME SCREEN =================
+const Home = ({ setView }) => (
 
-  data.forEach(entry => {
-    const key = entry.car;
-    if (!totals[key]) {
-      totals[key] = {
-        driver: entry.driver,
-        class: entry.carClass,
-        total: 0
-      };
-    }
-    totals[key].total += entry.totalScore || 0;
-  });
-
-  const sorted = Object.entries(totals).sort((a,b)=>b[1].total - a[1].total);
-
-  return (
-    <div style={{padding:20}}>
-      <h2>{title}</h2>
-      {sorted.map(([car,info],i)=>(
-        <div key={car} style={{padding:10, borderBottom:"1px solid #333"}}>
-          #{i+1} Car {car} - {info.driver} ({info.class}) : {info.total}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export default function App() {
-  const [screen, setScreen] = useState("home");
-  const [judge, setJudge] = useState(null);
-  const [car, setCar] = useState("");
-  const [driver, setDriver] = useState("");
-  const [gender, setGender] = useState("");
-  const [carClass, setCarClass] = useState("");
-  const [scores, setScores] = useState({});
-  const [mode, setMode] = useState("qualifying");
-  const [allData, setAllData] = useState([]);
-  const [finalists, setFinalists] = useState([]);
-
-  const setScore = (cat,val)=>{
-    setScores({...scores,[cat]:val});
-  };
-
-  const loadLeaderboard = async () => {
-    const querySnapshot = await getDocs(collection(db, "scores"));
-    const data = querySnapshot.docs.map(doc => doc.data());
-    setAllData(data);
-    setScreen("leaderboard");
-  };
-
-  const generateFinalists = async () => {
-    const querySnapshot = await getDocs(collection(db, "scores"));
-    const data = querySnapshot.docs.map(doc => doc.data());
-
-    const totals = {};
-    data.filter(d=>d.round==="qualifying").forEach(entry => {
-      if (!totals[entry.car]) {
-        totals[entry.car] = {
-          driver: entry.driver,
-          class: entry.carClass,
-          total: 0
-        };
-      }
-      totals[entry.car].total += entry.totalScore;
-    });
-
-    const sorted = Object.entries(totals).sort((a,b)=>b[1].total - a[1].total);
-    setFinalists(sorted.slice(0,30));
-    setMode("finals");
-
-    alert("Top 30 locked. Finals ready.");
-  };
-
-  const submit = async ()=>{
-    if(!car || !driver || !gender || !carClass || Object.keys(scores).length === 0){
-      return alert("Fill all fields");
-    }
-
-    if (mode === "finals") {
-      const isFinalist = finalists.find(([c]) => c === car);
-      if (!isFinalist) return alert("Not in Top 30");
-    }
-
-    const totalScore = Object.values(scores).reduce((a,b)=>a+b,0);
-
-    await addDoc(collection(db,"scores"),{
-      judge,
-      car,
-      driver,
-      gender,
-      carClass,
-      scores,
-      totalScore,
-      round: mode,
-      time:new Date()
-    });
-
-    alert("Score submitted!");
-    setScores({});
-    setCar("");
-    setDriver("");
-    setGender("");
-    setCarClass("");
-  };
-
-  // 🏁 HOME
-  if (screen === "home") {
-    return (
-      <div style={{
-        textAlign:"center",
-        background:"#000",
-        color:"#fff",
-        minHeight:"100vh",
-        padding:"40px 20px"
-      }}>
-
-        <img 
-  src="https://i.ibb.co/0yh124d4/BURNOUT-CHAMPS-SCORING.png" 
-  alt="logo"
-  style={{
-    width: "70%",
-    maxWidth: "300px",
-    height: "auto",
-    marginBottom: "20px"
-  }}
+<img 
+  src="/icon-512.png"
+  alt="AutoFest"
+  style={{ width: "220px", marginBottom: "20px" }}
 />
 
-        <div>
-          <button onClick={()=>setScreen("judge")} style={btnStyle}>START JUDGING</button>
-          <button onClick={loadLeaderboard} style={btnStyle}>LEADERBOARD</button>
-          <button onClick={generateFinalists} style={btnStyle}>START TOP 30 FINALS</button>
-        </div>
-      </div>
-    );
-  }
+<h1>AutoFest Burnout Champs</h1>
+<p style={{opacity: 0.7}}>Professional Judging System</p>
 
-  if (screen === "leaderboard") {
-    const qualifying = allData.filter(d=>d.round==="qualifying");
-    const finals = allData.filter(d=>d.round==="finals");
+<div style={{marginTop: 30}}>
+  <button style={btnGreen} onClick={()=>setView("judge")}>
+    START JUDGING
+  </button>
 
-    return (
-      <div style={{background:"#000", color:"#fff", minHeight:"100vh"}}>
-        <Leaderboard data={qualifying} title="QUALIFYING" />
-        <Leaderboard data={finals} title="🏆 FINALS RESULTS" />
+  <button style={btnBlue} onClick={()=>setView("leaderboard")}>
+    LEADERBOARD
+  </button>
 
-        <button onClick={()=>setScreen("home")} style={btnStyle}>BACK</button>
-      </div>
-    );
-  }
+  <button style={btnYellow} onClick={()=>setView("finals")}>
+    TOP 30 FINALS
+  </button>
+</div>
 
-  if (!judge) {
-    return (
-      <div style={{textAlign:"center", padding:40}}>
-        <h2>Select Judge</h2>
-        {[1,2,3,4,5,6].map(j=>(
-          <button key={j} onClick={()=>setJudge(j)} style={btnStyle}>
-            Judge {j}
-          </button>
-        ))}
-      </div>
-    );
-  }
+// ================= LEADERBOARD =================
+function Leaderboard({ data }) {
+const totals = {};
 
-  return (
-    <div style={{padding:20}}>
-      <h2>Judge {judge} ({mode.toUpperCase()})</h2>
+data.forEach(entry => {
+const totalScore = entry.totalScore || 0;
 
-      <input placeholder="Car #" value={car} onChange={(e)=>setCar(e.target.value)} />
-      <input placeholder="Driver" value={driver} onChange={(e)=>setDriver(e.target.value)} />
-
-      <div>
-        <button onClick={()=>setGender("Male")} style={{background:gender==="Male"?"blue":"#ccc", margin:5}}>Male</button>
-        <button onClick={()=>setGender("Female")} style={{background:gender==="Female"?"blue":"#ccc", margin:5}}>Female</button>
-      </div>
-
-      <div>
-        {classes.map(c=>(
-          <button key={c} onClick={()=>setCarClass(c)}
-            style={{background:carClass===c?"gold":"#ccc", margin:5}}>
-            {c}
-          </button>
-        ))}
-      </div>
-
-      {categories.map(cat=>(
-        <div key={cat} style={{marginTop:15}}>
-          <strong>{cat}</strong>
-          <div>
-            {Array.from({length:21},(_,i)=>(
-              <button key={i}
-                onClick={()=>setScore(cat,i)}
-                style={{
-                  background:scores[cat]===i?"green":"#ccc",
-                  margin:2,
-                  padding:8
-                }}>
-                {i}
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
-
-      <button onClick={submit} style={btnStyle}>SUBMIT</button>
-      <button onClick={()=>setScreen("home")} style={btnStyle}>BACK</button>
-    </div>
-  );
+if (!totals[entry.car]) {
+  totals[entry.car] = {
+    driver: entry.driver,
+    total: 0
+  };
 }
 
-const btnStyle = {
-  padding:20,
-  margin:10,
-  fontSize:18,
-  background:"#111",
-  color:"#fff",
-  border:"2px solid red",
-  borderRadius:10
+totals[entry.car].total += totalScore;
+
+});
+
+const sorted = Object.entries(totals)
+.sort((a,b)=>b[1].total - a[1].total);
+
+return (
+
+Leaderboard
+{sorted.map(([car,info],i)=>(
+
+#{i+1} Car {car} - {info.driver} : {info.total}
+
+))}
+
+);
+}
+
+// ================= MAIN APP =================
+export default function App() {
+
+const [view, setView] = useState("home");
+const [judge, setJudge] = useState(null);
+
+const [car, setCar] = useState("");
+const [driver, setDriver] = useState("");
+const [gender, setGender] = useState("");
+const [scores, setScores] = useState({});
+const [allData, setAllData] = useState([]);
+
+// ===== HOME =====
+if (view === "home") {
+return ;
+}
+
+// ===== SELECT JUDGE =====
+if (!judge && view === "judge") {
+return (
+<div style={{padding:40,textAlign:"center"}}>
+Select Judge
+{[1,2,3,4,5,6].map(j=>(
+<button key={j} onClick={()=>setJudge(j)} style={{margin:10,padding:20}}>
+Judge {j}
+
+))}
+
+);
+}
+
+// ===== SET SCORE =====
+const setScore = (cat,val)=>{
+setScores({...scores,[cat]});
+};
+
+// ===== LOAD LEADERBOARD =====
+const loadLeaderboard = async () => {
+const querySnapshot = await getDocs(collection(db, "scores"));
+const data = querySnapshot.docs.map(doc => doc.data());
+setAllData(data);
+setView("leaderboard");
+};
+
+// ===== SUBMIT =====
+const submit = async ()=>{
+if(!car || !driver || !gender || Object.keys(scores).length === 0){
+return alert("Fill all fields and scores");
+}
+
+const totalScore = Object.values(scores).reduce((a,b)=>a+b,0);
+
+await addDoc(collection(db,"scores"),{
+  judge,
+  car,
+  driver,
+  gender,
+  scores,
+  totalScore,
+  time:new Date()
+});
+
+alert("Score submitted!");
+setScores({});
+setCar("");
+setDriver("");
+setGender("");
+
+};
+
+// ===== LEADERBOARD VIEW =====
+if (view === "leaderboard") {
+return (
+
+
+<button onClick={() => setView("home")} style={{margin:20}}>
+Back
+
+
+);
+}
+
+// ===== FINALS (TOP 30 RESET) =====
+if (view === "finals") {
+return (
+<div style={{padding:40,textAlign:"center"}}>
+Top 30 Finals
+Fresh scoring round
+<button onClick={()=>setView("judge")}>Start Finals Judging
+
+);
+}
+
+// ===== JUDGING SCREEN =====
+return (
+
+Judge {judge}
+
+  <div>
+    <label>Car #: </label>
+    <input value={car} onChange={(e)=>setCar(e.target.value)} />
+  </div>
+
+  <div>
+    <label>Driver Name: </label>
+    <input value={driver} onChange={(e)=>setDriver(e.target.value)} />
+  </div>
+
+  <div>
+    <label>Gender: </label>
+    <button style={btnBlue} onClick={()=>setGender("Male")}>Male</button>
+    <button style={btnBlue} onClick={()=>setGender("Female")}>Female</button>
+    <p>{gender}</p>
+  </div>
+
+  {categories.map(cat=>(
+    <div key={cat} style={{marginTop:10}}>
+      <strong>{cat}</strong><br/>
+      {Array.from({length:21},(_,i)=>(
+        <button key={i} onClick={()=>setScore(cat,i)} style={{margin:2}}>
+          {i}
+        </button>
+      ))}
+    </div>
+  ))}
+
+  <button style={btnGreen} onClick={submit}>Submit</button>
+  <button onClick={()=>setScores({})}>Clear</button>
+  <button onClick={loadLeaderboard}>Leaderboard</button>
+  <button onClick={()=>setView("home")}>Home</button>
+</div>
+
+);
+}
+
+// ================= BUTTON STYLES =================
+const btnGreen = {
+margin: 10,
+padding: "14px 20px",
+background: "green",
+color: "#fff",
+border: "none",
+borderRadius: "10px"
+};
+
+const btnBlue = {
+margin: 10,
+padding: "14px 20px",
+background: "#007bff",
+color: "#fff",
+border: "none",
+borderRadius: "10px"
+};
+
+const btnYellow = {
+margin: 10,
+padding: "14px 20px",
+background: "#ffc107",
+color: "#000",
+border: "none",
+borderRadius: "10px"
 };
