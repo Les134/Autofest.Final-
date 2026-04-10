@@ -136,14 +136,15 @@ export default function App() {
       }}>
 
         <img 
-          src="https://i.ibb.co/0yh124d4/BURNOUT-CHAMPS-SCORING.png" 
-          alt="logo"
-          style={{
-            width:"90%",
-            maxWidth:"420px",
-            marginBottom:"30px"
-          }}
-        />
+  src="https://i.ibb.co/0yh124d4/BURNOUT-CHAMPS-SCORING.png" 
+  alt="logo"
+  style={{
+    width: "70%",
+    maxWidth: "300px",
+    height: "auto",
+    marginBottom: "20px"
+  }}
+/>
 
         <div>
           <button onClick={()=>setScreen("judge")} style={btnStyle}>START JUDGING</button>
