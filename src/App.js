@@ -14,6 +14,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// SCORECARD
 const categories = [
   { name: "Instant Smoke", max: 10 },
   { name: "Constant Smoke", max: 20 },
@@ -84,16 +85,18 @@ export default function App() {
     setScreen("leaderboard");
   };
 
+  // HOME
   if(screen==="home"){
     return (
       <div style={{textAlign:"center",padding:40}}>
         <h1>AutoFest Series Burnout Champs</h1>
-        <button onClick={()=>setScreen("judgeSelect")}>Start Judging</button>
-        <button onClick={()=>setScreen("admin")}>Admin</button>
+        <button style={btnBig} onClick={()=>setScreen("judgeSelect")}>Start Judging</button>
+        <button style={btnBig} onClick={()=>setScreen("admin")}>Admin</button>
       </div>
     );
   }
 
+  // ADMIN
   if(screen==="admin"){
     return (
       <div style={{padding:20}}>
@@ -102,6 +105,7 @@ export default function App() {
           <input
             key={i}
             value={j}
+            style={{display:"block",marginBottom:10,padding:10,fontSize:16}}
             onChange={(e)=>{
               const copy=[...judgesList];
               copy[i]=e.target.value;
@@ -109,17 +113,18 @@ export default function App() {
             }}
           />
         ))}
-        <button onClick={()=>setScreen("home")}>Back</button>
+        <button style={btnBig} onClick={()=>setScreen("home")}>Back</button>
       </div>
     );
   }
 
+  // JUDGE SELECT
   if(screen==="judgeSelect"){
     return (
       <div style={{textAlign:"center",padding:40}}>
         <h2>Select Judge</h2>
         {judgesList.map((j,i)=>(
-          <button key={i} onClick={()=>{setJudgeName(j); setScreen("judge");}}>
+          <button key={i} style={btnBig} onClick={()=>{setJudgeName(j); setScreen("judge");}}>
             {j}
           </button>
         ))}
@@ -127,17 +132,18 @@ export default function App() {
     );
   }
 
+  // LEADERBOARD
   if(screen==="leaderboard"){
     const sorted=[...allData].sort((a,b)=>b.finalScore-a.finalScore).slice(0,30);
     return (
       <div style={{padding:20}}>
-        <h2>Top 30</h2>
+        <h2>🏆 Top 30</h2>
         {sorted.map((e,i)=>(
-          <div key={i}>
+          <div key={i} style={{marginBottom:10,fontSize:18}}>
             #{i+1} {e.driver} ({e.car}) - {e.finalScore}
           </div>
         ))}
-        <button onClick={()=>setScreen("judge")}>Back</button>
+        <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
       </div>
     );
   }
@@ -148,47 +154,89 @@ export default function App() {
 
   return (
     <div style={{padding:20}}>
+
       <h2>{judgeName}</h2>
 
-      <input placeholder="Car #" value={car} onChange={e=>setCar(e.target.value)} />
-      <input placeholder="Driver" value={driver} onChange={e=>setDriver(e.target.value)} />
-      <input placeholder="Rego" value={rego} onChange={e=>setRego(e.target.value)} />
-      <input placeholder="Car Name" value={carName} onChange={e=>setCarName(e.target.value)} />
+      <input placeholder="Car #" value={car} onChange={e=>setCar(e.target.value)} style={input}/>
+      <input placeholder="Driver" value={driver} onChange={e=>setDriver(e.target.value)} style={input}/>
+      <input placeholder="Rego" value={rego} onChange={e=>setRego(e.target.value)} style={input}/>
+      <input placeholder="Car Name" value={carName} onChange={e=>setCarName(e.target.value)} style={input}/>
 
-      <div>
-        <button onClick={()=>setGender("Male")}>Male</button>
-        <button onClick={()=>setGender("Female")}>Female</button>
+      <div style={{marginTop:20}}>
+        <button style={{...btnSelect, background: gender==="Male"?"#00aa00":"#fff"}} onClick={()=>setGender("Male")}>Male</button>
+        <button style={{...btnSelect, background: gender==="Female"?"#00aa00":"#fff"}} onClick={()=>setGender("Female")}>Female</button>
       </div>
 
-      <div>
+      <div style={{marginTop:20}}>
         {classes.map(c=>(
-          <button key={c} onClick={()=>setCarClass(c)}>{c}</button>
+          <button
+            key={c}
+            onClick={()=>setCarClass(c)}
+            style={{
+              ...btnSelect,
+              background: carClass===c ? "#0033cc" : "#fff",
+              color: carClass===c ? "#fff" : "#000"
+            }}
+          >
+            {c}
+          </button>
         ))}
       </div>
 
+      <h3 style={{marginTop:30}}>POINT ALLOCATIONS</h3>
+
       {categories.map(cat=>(
-        <div key={cat.name}>
+        <div key={cat.name} style={{marginBottom:30}}>
           <strong>{cat.name}</strong>
-          {Array.from({length:cat.max+1},(_,i)=>(
-            <button key={i} onClick={()=>setScore(cat.name,i)}>{i}</button>
-          ))}
+
+          <div style={{marginTop:10}}>
+            {Array.from({length:cat.max+1},(_,i)=>(
+              <button
+                key={i}
+                onClick={()=>setScore(cat.name,i)}
+                style={{
+                  margin:6,
+                  padding:"14px",
+                  fontSize:16,
+                  fontWeight:"bold",
+                  border:"2px solid #000",
+                  background: scores[cat.name]===i ? "#ff0000" : "#fff",
+                  color: scores[cat.name]===i ? "#fff" : "#000"
+                }}
+              >
+                {i}
+              </button>
+            ))}
+          </div>
         </div>
       ))}
 
-      <h3>Deductions</h3>
+      <h3>🚫 DEDUCTIONS</h3>
+
       {deductionsList.map(d=>(
-        <button key={d} onClick={()=>toggleDeduction(d)}>{d}</button>
+        <button
+          key={d}
+          onClick={()=>toggleDeduction(d)}
+          style={{
+            ...btnSelect,
+            background: deductions[d] ? "#ff0000" : "#fff"
+          }}
+        >
+          {d}
+        </button>
       ))}
 
-      <h2>Final: {finalScore}</h2>
+      <h2>Total: {totalScore}</h2>
+      <h2>Deductions: -{totalDeductions}</h2>
+      <h1>FINAL: {finalScore}</h1>
 
-      <button onClick={submit} disabled={locked}>
+      <button style={btnBig} onClick={submit} disabled={locked}>
         {locked ? "Submitted" : "Submit"}
       </button>
 
-      <button onClick={loadLeaderboard}>Leaderboard</button>
+      <button style={btnBig} onClick={loadLeaderboard}>Top 30</button>
 
-      <button onClick={()=>{
+      <button style={btnBig} onClick={()=>{
         setScores({});
         setDeductions({});
         setCar(""); setDriver(""); setRego(""); setCarName("");
@@ -196,6 +244,34 @@ export default function App() {
       }}>
         Next Car
       </button>
+
     </div>
   );
 }
+
+// STYLES
+const btnBig = {
+  padding:"18px",
+  margin:"10px",
+  fontSize:"18px",
+  fontWeight:"bold",
+  border:"3px solid #000",
+  background:"#000",
+  color:"#fff"
+};
+
+const btnSelect = {
+  padding:"16px",
+  margin:"8px",
+  fontSize:"16px",
+  fontWeight:"bold",
+  border:"3px solid #000"
+};
+
+const input = {
+  display:"block",
+  marginBottom:"10px",
+  padding:"12px",
+  fontSize:"16px",
+  width:"100%"
+};
