@@ -58,9 +58,15 @@ export default function App() {
 
   const submit = async ()=>{
     if(locked) return alert("Already submitted");
-    if(!car || !driver || !rego || !carName || !gender || !carClass){
-      return alert("Fill all fields");
-    }
+    // Require at least ONE of these fields
+if(!car && !driver && !rego && !carName){
+  return alert("Enter at least ONE: Car #, Driver, Rego or Car Name");
+}
+
+// Still require these
+if(!gender || !carClass){
+  return alert("Select gender and class");
+}
 
     if(!window.confirm("Submit score?")) return;
 
