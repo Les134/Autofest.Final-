@@ -134,7 +134,11 @@ export default function App() {
         height:"100vh",
         paddingTop:40
       }}>
-        <img src="/https://ibb.co/0yh124d4" alt="logo" style={{width:"80%", maxWidth:500}} />
+        <img 
+  src="https://i.ibb.co/0yh124d4/BURNOUT-CHAMPS-SCORING.png" 
+  alt="logo" 
+  style={{width:"80%", maxWidth:500}}
+/>
 
         <div style={{marginTop:40}}>
           <button onClick={()=>setScreen("judge")} style={btnStyle}>
