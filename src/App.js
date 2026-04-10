@@ -91,16 +91,24 @@ if(!gender || !carClass){
     setScreen("leaderboard");
   };
 
-  // HOME
-  if(screen==="home"){
-    return (
-      <div style={{textAlign:"center",padding:40}}>
-        <h1>AutoFest Series Burnout Champs</h1>
-        <button style={btnBig} onClick={()=>setScreen("judgeSelect")}>Start Judging</button>
-        <button style={btnBig} onClick={()=>setScreen("admin")}>Admin</button>
-      </div>
-    );
-  }
+ if(screen==="home"){
+  return (
+    <div
+      style={{
+        background:"#000",
+        height:"100vh",
+        display:"flex",
+        flexDirection:"column",
+        justifyContent:"center",
+        alignItems:"center",
+        textAlign:"center",
+        animation:"fadeIn 1.5s ease"
+      }}
+    >
+
+      {/* LOGO */}
+      <img 
+        src="/logo.png" 
 
   // ADMIN
   if(screen==="admin"){
@@ -281,3 +289,16 @@ const input = {
   fontSize:"16px",
   width:"100%"
 };
+const styles = document.createElement("style");
+styles.innerHTML = `
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zoomIn {
+  from { transform: scale(0.8); opacity:0; }
+  to { transform: scale(1); opacity:1; }
+}
+`;
+document.head.appendChild(styles);
