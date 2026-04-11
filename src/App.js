@@ -55,17 +55,22 @@ export default function App() {
   const setScore = (cat,val)=> setScores({...scores,[cat]:val});
   const toggleDeduction = (d)=> setDeductions(prev=>({...prev,[d]:!prev[d]}));
 
-  // ✅ FIXED SUBMIT (DELAY FIX)
+  // ✅ FIXED SUBMIT
   const submit = async ()=>{
     if(submitting) return;
 
     if(!car && !driver && !rego && !carName){
-      alert("Enter competitor");
+      alert("Enter competitor details");
       return;
     }
 
-    if(!gender || !carClass){
-      alert("Select gender + class");
+    if(!gender){
+      alert("Select gender");
+      return;
+    }
+
+    if(!carClass){
+      alert("Select class");
       return;
     }
 
@@ -86,11 +91,10 @@ export default function App() {
         finalScore
       });
 
-      // 🔥 FIX: small delay ensures React state updates
       setTimeout(()=>{
         setLocked(true);
         setSubmitting(false);
-        alert("Saved ✅");
+        alert("✅ Saved");
       },300);
 
     } catch (err){
@@ -99,7 +103,7 @@ export default function App() {
     }
   };
 
-  // ✅ ALWAYS FRESH TOP 150
+  // TOP 150
   const buildTop150 = async ()=>{
     const q = await getDocs(collection(db,"scores"));
     const data = q.docs.map(d=>d.data());
@@ -110,7 +114,7 @@ export default function App() {
     setScreen("top150");
   };
 
-  // ✅ ALWAYS FRESH TOP 30
+  // TOP 30
   const buildTop30 = async ()=>{
     const q = await getDocs(collection(db,"scores"));
     const data = q.docs.map(d=>d.data());
@@ -160,7 +164,7 @@ export default function App() {
   if(screen==="top150"){
     return (
       <div style={{padding:20}}>
-        <h2>TOP 150</h2>
+        <h2>🏁 TOP 150</h2>
         {top150.map((e,i)=>(
           <div key={i}>#{i+1} {e.driver || e.car} - {e.finalScore}</div>
         ))}
@@ -173,7 +177,7 @@ export default function App() {
   if(screen==="top30"){
     return (
       <div style={{padding:20}}>
-        <h2>TOP 30</h2>
+        <h2>🏆 TOP 30</h2>
         {top30.map((e,i)=>(
           <div key={i}>#{i+1} {e.driver || e.car} - {e.finalScore}</div>
         ))}
@@ -187,9 +191,9 @@ export default function App() {
     const winners = getWinners();
     return (
       <div style={{padding:20}}>
-        <h1>RESULTS</h1>
+        <h1>🏆 RESULTS</h1>
         {classes.map(cls=>(
-          <div key={cls}>
+          <div key={cls} style={{marginBottom:30}}>
             <h2>{cls}</h2>
             <div>🥇 {winners[cls][0]?.driver || "-"}</div>
             <div>🥈 {winners[cls][1]?.driver || "-"}</div>
@@ -209,9 +213,32 @@ export default function App() {
 
       <h2>{judgeName}</h2>
 
-      <input placeholder="Car" value={car} onChange={e=>setCar(e.target.value)} style={input}/>
+      <input placeholder="Car #" value={car} onChange={e=>setCar(e.target.value)} style={input}/>
       <input placeholder="Driver" value={driver} onChange={e=>setDriver(e.target.value)} style={input}/>
+      <input placeholder="Rego" value={rego} onChange={e=>setRego(e.target.value)} style={input}/>
+      <input placeholder="Car Name" value={carName} onChange={e=>setCarName(e.target.value)} style={input}/>
 
+      {/* Gender */}
+      <div style={section}>
+        <button style={{...btnSelect, background: gender==="Male"?"#00aa00":"#fff"}} onClick={()=>setGender("Male")}>Male</button>
+        <button style={{...btnSelect, background: gender==="Female"?"#00aa00":"#fff"}} onClick={()=>setGender("Female")}>Female</button>
+      </div>
+
+      {/* Classes */}
+      <div style={section}>
+        {classes.map(c=>(
+          <button key={c} onClick={()=>setCarClass(c)}
+            style={{
+              ...btnSelect,
+              background: carClass===c ? "#0033cc" : "#fff",
+              color: carClass===c ? "#fff" : "#000"
+            }}>
+            {c}
+          </button>
+        ))}
+      </div>
+
+      {/* Scores */}
       {categories.map(cat=>(
         <div key={cat.name} style={{marginBottom:25}}>
           <strong>{cat.name}</strong>
@@ -222,7 +249,9 @@ export default function App() {
                 style={{
                   margin:6,
                   padding:"14px",
-                  background: scores[cat.name]===i ? "#ff0000" : "#fff"
+                  border:"2px solid #000",
+                  background: scores[cat.name]===i ? "#ff0000" : "#fff",
+                  color: scores[cat.name]===i ? "#fff" : "#000"
                 }}>
                 {i}
               </button>
@@ -231,39 +260,79 @@ export default function App() {
         </div>
       ))}
 
-      <h2>Final: {finalScore}</h2>
+      {/* Deductions */}
+      <div style={section}>
+        {deductionsList.map(d=>(
+          <button key={d}
+            onClick={()=>toggleDeduction(d)}
+            style={{
+              ...btnSelect,
+              background: deductions[d] ? "#ff0000" : "#fff"
+            }}>
+            {d}
+          </button>
+        ))}
+      </div>
 
-      <button
-        style={{...btnBig, background: submitting ? "#666" : "#000"}}
-        onClick={submit}
-      >
+      <h2>FINAL: {finalScore}</h2>
+
+      <button style={{...btnBig, background: submitting ? "#666" : "#000"}} onClick={submit}>
         {submitting ? "Submitting..." : "Submit"}
       </button>
 
       <button style={btnBig} onClick={buildTop150}>Top 150</button>
       <button style={btnBig} onClick={buildTop30}>Top 30</button>
 
+      <button style={btnBig} onClick={()=>{
+        setScores({});
+        setDeductions({});
+        setCar(""); setDriver(""); setRego(""); setCarName("");
+        setGender(""); setCarClass(""); setLocked(false);
+      }}>
+        Next Car
+      </button>
+
     </div>
   );
 }
 
+// STYLES
 const home = {
   background:"#000",
   height:"100vh",
   display:"flex",
+  flexDirection:"column",
   justifyContent:"center",
   alignItems:"center"
+};
+
+const section = {
+  marginTop:20,
+  marginBottom:30
 };
 
 const btnBig = {
   padding:"18px",
   margin:"12px",
-  fontSize:"18px"
+  fontSize:"18px",
+  fontWeight:"bold",
+  border:"3px solid #000",
+  background:"#000",
+  color:"#fff"
+};
+
+const btnSelect = {
+  padding:"16px",
+  margin:"8px",
+  fontSize:"16px",
+  fontWeight:"bold",
+  border:"3px solid #000"
 };
 
 const input = {
   display:"block",
   marginBottom:"10px",
   padding:"12px",
+  fontSize:"16px",
   width:"100%"
 };
