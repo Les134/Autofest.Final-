@@ -38,42 +38,34 @@ export default function App(){
   const [saving,setSaving] = useState(false);
 
   const [data,setData] = useState([]);
+  const [top150,setTop150] = useState([]);
 
-  const setScore = (cat,val)=> setScores(prev=>({...prev,[cat]:val}));
-  const toggleDeduction = d => setDeductions(prev=>({...prev,[d]:!prev[d]}));
-
-  // 💾 LOAD LOCAL BACKUP
+  // OFFLINE STORAGE
   const getQueue = () => JSON.parse(localStorage.getItem("offlineScores") || "[]");
   const saveQueue = (q) => localStorage.setItem("offlineScores", JSON.stringify(q));
 
-  // 🔄 SYNC OFFLINE DATA
   const syncOffline = async ()=>{
     let queue = getQueue();
-    if(queue.length === 0) return;
-
     const remaining = [];
 
     for(const item of queue){
-      try {
-        await addDoc(collection(db,"scores"), item);
-      } catch {
-        remaining.push(item);
-      }
+      try { await addDoc(collection(db,"scores"), item); }
+      catch { remaining.push(item); }
     }
 
     saveQueue(remaining);
   };
 
-  // AUTO SYNC ON LOAD
   useEffect(()=>{
     syncOffline();
     window.addEventListener("online", syncOffline);
   },[]);
 
-  // 🔥 SUBMIT (OFFLINE SAFE)
-  const submit = ()=>{
-    if(saving) return;
+  const setScore = (cat,val)=> setScores(prev=>({...prev,[cat]:val}));
+  const toggleDeduction = d => setDeductions(prev=>({...prev,[d]:!prev[d]}));
 
+  // SUBMIT (NON FREEZING + OFFLINE SAFE)
+  const submit = ()=>{
     if(!car && !driver && !rego && !carName){
       alert("Enter competitor");
       return;
@@ -96,18 +88,18 @@ export default function App(){
       created: Date.now()
     };
 
-    // 💾 SAVE TO LOCAL FIRST
+    // save locally
     const queue = getQueue();
     queue.push(payload);
     saveQueue(queue);
 
-    // RESET UI
+    // reset instantly
     setScores({});
     setDeductions({});
     setCar(""); setDriver(""); setRego(""); setCarName("");
     setGender(""); setCarClass("");
 
-    // TRY SEND (NON-BLOCKING)
+    // background sync
     addDoc(collection(db,"scores"), payload)
       .then(()=>{
         const updated = getQueue().filter(q=>q.created !== payload.created);
@@ -123,6 +115,18 @@ export default function App(){
     setData(d);
   };
 
+  // 🔥 TOP 150
+  const buildTop150 = async ()=>{
+    await syncOffline();
+    const q = await getDocs(collection(db,"scores"));
+    const d = q.docs.map(doc=>doc.data());
+
+    const sorted = d.sort((a,b)=>b.finalScore-a.finalScore).slice(0,150);
+    setTop150(sorted);
+    setScreen("top150");
+  };
+
+  // GROUPED
   const grouped = {};
   data.forEach(e=>{
     const key = `${e.carClass || "Unknown"} - ${e.gender || "Unknown"}`;
@@ -134,10 +138,12 @@ export default function App(){
     grouped[k].sort((a,b)=>b.finalScore-a.finalScore);
   });
 
+  // TOP 30
   const top30 = [...data]
     .sort((a,b)=>b.finalScore-a.finalScore)
     .slice(0,30);
 
+  // PODIUM
   const podium = {};
   classes.forEach(c=>{
     podium[c] = top30
@@ -148,24 +154,30 @@ export default function App(){
 
   const printResults = ()=> window.print();
 
-  if(screen==="judgeSelect"){
+  // TOP150 SCREEN
+  if(screen==="top150"){
     return (
       <div style={{padding:20}}>
-        <h2>Select Judge</h2>
+        <h2>🏁 TOP 150</h2>
 
-        {[1,2,3,4,5,6].map(j=>(
-          <div key={j} style={{marginBottom:15}}>
-            <input style={input} value={judgeNames[j]}
-              onChange={e=>setJudgeNames({...judgeNames,[j]:e.target.value})}/>
-            <button style={btnBig} onClick={()=>{setJudge(j);setScreen("judge");}}>
-              {judgeNames[j]}
-            </button>
+        {top150.map((e,i)=>(
+          <div key={i} style={row}>
+            #{i+1} | Car No: {e.car || "-"} | Total Score: {e.finalScore}
           </div>
         ))}
+
+        <button style={btnBig} onClick={()=>setScreen("leaderboard")}>
+          View Classes
+        </button>
+
+        <button style={btnBig} onClick={()=>setScreen("judge")}>
+          Back
+        </button>
       </div>
     );
   }
 
+  // LEADERBOARD
   if(screen==="leaderboard"){
     return (
       <div style={{padding:20}}>
@@ -189,6 +201,7 @@ export default function App(){
     );
   }
 
+  // TOP 30
   if(screen==="top30"){
     return (
       <div style={{padding:20}}>
@@ -200,11 +213,14 @@ export default function App(){
           </div>
         ))}
 
-        <button style={btnBig} onClick={()=>setScreen("podium")}>Show Winners</button>
+        <button style={btnBig} onClick={()=>setScreen("podium")}>
+          Show Winners
+        </button>
       </div>
     );
   }
 
+  // PODIUM
   if(screen==="podium"){
     return (
       <div style={{padding:20}}>
@@ -220,6 +236,25 @@ export default function App(){
         ))}
 
         <button style={btnBig} onClick={printResults}>Print</button>
+      </div>
+    );
+  }
+
+  // JUDGE SELECT
+  if(screen==="judgeSelect"){
+    return (
+      <div style={{padding:20}}>
+        <h2>Select Judge</h2>
+
+        {[1,2,3,4,5,6].map(j=>(
+          <div key={j} style={{marginBottom:15}}>
+            <input style={input} value={judgeNames[j]}
+              onChange={e=>setJudgeNames({...judgeNames,[j]:e.target.value})}/>
+            <button style={btnBig} onClick={()=>{setJudge(j);setScreen("judge");}}>
+              {judgeNames[j]}
+            </button>
+          </div>
+        ))}
       </div>
     );
   }
@@ -275,6 +310,10 @@ export default function App(){
 
       <button style={btnBig} onClick={submit}>Submit</button>
 
+      <button style={btnBig} onClick={buildTop150}>
+        Top 150
+      </button>
+
       <button style={btnBig} onClick={()=>{loadData();setScreen("leaderboard");}}>
         View Leaderboard
       </button>
@@ -326,3 +365,4 @@ const btnBig = {
   background:"#000",
   color:"#fff"
 };
+    
