@@ -20,8 +20,12 @@ export default function App(){
   const [judge,setJudge] = useState("");
 
   const [judgeNames,setJudgeNames] = useState({
-    1:"Judge 1",2:"Judge 2",3:"Judge 3",
-    4:"Judge 4",5:"Judge 5",6:"Judge 6"
+    1:"Judge 1",
+    2:"Judge 2",
+    3:"Judge 3",
+    4:"Judge 4",
+    5:"Judge 5",
+    6:"Judge 6"
   });
 
   const [data,setData] = useState([]);
@@ -37,62 +41,75 @@ export default function App(){
 
   const [scores,setScores] = useState({});
 
-  useEffect(()=>{
+  useEffect(function(){
     loadData();
   },[]);
 
-  const loadData = async ()=>{
-    const q = await getDocs(collection(db,"scores"));
-    const d = q.docs.map(doc=>doc.data());
-    setData(d);
-  };
+  function loadData(){
+    getDocs(collection(db,"scores")).then(function(q){
+      var d = q.docs.map(function(doc){
+        return doc.data();
+      });
+      setData(d);
+    });
+  }
 
-  const setScore = (cat,val)=> setScores(prev=>({...prev,[cat]:val}));
+  function setScore(cat,val){
+    setScores(function(prev){
+      var updated = Object.assign({}, prev);
+      updated[cat] = val;
+      return updated;
+    });
+  }
 
-  // 🔥 FIXED SUBMIT (simple + reliable)
-  const submit = async ()=>{
+  function submit(){
+
     if(Object.keys(scores).length === 0){
       alert("Add scores first");
       return;
     }
 
-    const total = Object.values(scores).reduce((a,b)=>a+b,0);
+    var total = Object.values(scores).reduce(function(a,b){
+      return a + b;
+    },0);
 
-    const payload = {
-      judge,
-      car,
-      driver,
-      rego,
-      carName,
-      gender,
-      carClass,
+    var payload = {
+      judge: judge,
+      car: car,
+      driver: driver,
+      rego: rego,
+      carName: carName,
+      gender: gender,
+      carClass: carClass,
       finalScore: total
     };
 
     // instant UI update
-    setData(prev => [...prev, payload]);
+    setData(function(prev){
+      return prev.concat([payload]);
+    });
 
-    try{
-      await addDoc(collection(db,"scores"), payload);
-    }catch(err){
-      alert("Save failed — check internet");
-    }
+    // save to Firebase (non-blocking)
+    addDoc(collection(db,"scores"), payload).catch(function(){
+      console.log("save failed");
+    });
 
     // reset form
     setScores({});
-    setCar(""); 
-    setDriver(""); 
-    setRego(""); 
+    setCar("");
+    setDriver("");
+    setRego("");
     setCarName("");
-    setGender(""); 
+    setGender("");
     setCarClass("");
-  };
+  }
 
-  const combineScores = ()=>{
-    const combined = {};
+  function combineScores(){
+    var combined = {};
 
-    data.forEach(entry=>{
-      const key = entry.car || entry.rego || "Unknown";
+    data.forEach(function(entry){
+
+      var key = entry.car || entry.rego || "Unknown";
 
       if(!combined[key]){
         combined[key] = {
@@ -108,87 +125,112 @@ export default function App(){
     });
 
     return Object.values(combined);
-  };
+  }
 
-  const buildTop150 = ()=>{
-    const sorted = combineScores()
-      .sort((a,b)=>b.total-a.total)
+  function buildTop150(){
+    var sorted = combineScores()
+      .sort(function(a,b){ return b.total - a.total; })
       .slice(0,150);
 
     setTop150(sorted);
     setScreen("top150");
-  };
+  }
 
-  const grouped = {};
-  combineScores().forEach(e=>{
-    const key = `${e.carClass || "Unknown"} - ${e.gender || "Unknown"}`;
-    if(!grouped[key]) grouped[key]=[];
+  var grouped = {};
+  combineScores().forEach(function(e){
+    var key = (e.carClass || "Unknown") + " - " + (e.gender || "Unknown");
+
+    if(!grouped[key]) grouped[key] = [];
     grouped[key].push(e);
   });
 
-  Object.keys(grouped).forEach(k=>{
-    grouped[k].sort((a,b)=>b.total-a.total);
+  Object.keys(grouped).forEach(function(k){
+    grouped[k].sort(function(a,b){
+      return b.total - a.total;
+    });
   });
 
   // SCREENS
 
-  if(screen==="judgeSelect"){
+  if(screen === "judgeSelect"){
     return (
       <div style={{padding:20}}>
         <h2>Select Judge</h2>
 
-        {[1,2,3,4,5,6].map(j=>(
-          <div key={j} style={{marginBottom:15}}>
-            <input
-              style={input}
-              value={judgeNames[j]}
-              onChange={e=>setJudgeNames({...judgeNames,[j]:e.target.value})}
-            />
+        {[1,2,3,4,5,6].map(function(j){
+          return (
+            <div key={j} style={{marginBottom:15}}>
+              <input
+                style={input}
+                value={judgeNames[j]}
+                onChange={function(e){
+                  var updated = Object.assign({}, judgeNames);
+                  updated[j] = e.target.value;
+                  setJudgeNames(updated);
+                }}
+              />
 
-            <button style={btnBig} onClick={()=>{setJudge(j);setScreen("judge");}}>
-              {judgeNames[j]}
-            </button>
-          </div>
-        ))}
+              <button style={btnBig} onClick={function(){
+                setJudge(j);
+                setScreen("judge");
+              }}>
+                {judgeNames[j]}
+              </button>
+            </div>
+          );
+        })}
       </div>
     );
   }
 
-  if(screen==="top150"){
+  if(screen === "top150"){
     return (
       <div style={{padding:20}}>
         <h2>TOP 150</h2>
 
-        {top150.map((e,i)=>(
-          <div key={i} style={row}>
-            #{i+1} | Car No: {e.car} | Score: {e.total}
-          </div>
-        ))}
+        {top150.map(function(e,i){
+          return (
+            <div key={i} style={row}>
+              #{i+1} | Car No: {e.car} | Score: {e.total}
+            </div>
+          );
+        })}
 
-        <button style={btnBig} onClick={()=>setScreen("leaderboard")}>Leaderboard</button>
-        <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
+        <button style={btnBig} onClick={function(){setScreen("leaderboard");}}>
+          Leaderboard
+        </button>
+
+        <button style={btnBig} onClick={function(){setScreen("judge");}}>
+          Back
+        </button>
       </div>
     );
   }
 
-  if(screen==="leaderboard"){
+  if(screen === "leaderboard"){
     return (
       <div style={{padding:20}}>
         <h2>Leaderboard</h2>
 
-        {Object.keys(grouped).map(group=>(
-          <div key={group}>
-            <h3 style={header}>{group}</h3>
+        {Object.keys(grouped).map(function(group){
+          return (
+            <div key={group}>
+              <h3 style={header}>{group}</h3>
 
-            {grouped[group].map((e,i)=>(
-              <div key={i} style={row}>
-                #{i+1} | Car No: {e.car} | Score: {e.total}
-              </div>
-            ))}
-          </div>
-        ))}
+              {grouped[group].map(function(e,i){
+                return (
+                  <div key={i} style={row}>
+                    #{i+1} | Car No: {e.car} | Score: {e.total}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
 
-        <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
+        <button style={btnBig} onClick={function(){setScreen("judge");}}>
+          Back
+        </button>
       </div>
     );
   }
@@ -198,44 +240,48 @@ export default function App(){
 
       <h2>{judgeNames[judge]}</h2>
 
-      <input style={input} placeholder="Car #" value={car} onChange={e=>setCar(e.target.value)}/>
-      <input style={input} placeholder="Driver" value={driver} onChange={e=>setDriver(e.target.value)}/>
-      <input style={input} placeholder="Rego" value={rego} onChange={e=>setRego(e.target.value)}/>
-      <input style={input} placeholder="Car Name" value={carName} onChange={e=>setCarName(e.target.value)}/>
+      <input style={input} placeholder="Car #" value={car} onChange={function(e){setCar(e.target.value);}}/>
+      <input style={input} placeholder="Driver" value={driver} onChange={function(e){setDriver(e.target.value);}}/>
+      <input style={input} placeholder="Rego" value={rego} onChange={function(e){setRego(e.target.value);}}/>
+      <input style={input} placeholder="Car Name" value={carName} onChange={function(e){setCarName(e.target.value);}}/>
 
       <div style={section}>
-        <button style={gender==="Male"?btnGreen:btn} onClick={()=>setGender("Male")}>Male</button>
-        <button style={gender==="Female"?btnGreen:btn} onClick={()=>setGender("Female")}>Female</button>
+        <button style={gender==="Male"?btnGreen:btn} onClick={function(){setGender("Male");}}>Male</button>
+        <button style={gender==="Female"?btnGreen:btn} onClick={function(){setGender("Female");}}>Female</button>
       </div>
 
       <div style={section}>
-        {classes.map(c=>(
-          <button key={c}
-            onClick={()=>setCarClass(c)}
-            style={carClass===c?btnBlue:btn}>
-            {c}
-          </button>
-        ))}
+        {classes.map(function(c){
+          return (
+            <button key={c}
+              onClick={function(){setCarClass(c);}}
+              style={carClass===c?btnBlue:btn}>
+              {c}
+            </button>
+          );
+        })}
       </div>
 
-      {categories.map(cat=>(
-        <div key={cat} style={scoreBlock}>
-          <strong>{cat}</strong>
-          <div>
-            {Array.from({length:21},(_,i)=>(
-              <button key={i}
-                onClick={()=>setScore(cat,i)}
-                style={scores[cat]===i?btnRed:btn}>
-                {i}
-              </button>
-            ))}
+      {categories.map(function(cat){
+        return (
+          <div key={cat} style={scoreBlock}>
+            <strong>{cat}</strong>
+            <div>
+              {Array.from({length:21},(_,i)=>(
+                <button key={i}
+                  onClick={function(){setScore(cat,i);}}
+                  style={scores[cat]===i?btnRed:btn}>
+                  {i}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       <button style={btnBig} onClick={submit}>Submit</button>
       <button style={btnBig} onClick={buildTop150}>Top 150</button>
-      <button style={btnBig} onClick={()=>setScreen("leaderboard")}>Leaderboard</button>
+      <button style={btnBig} onClick={function(){setScreen("leaderboard");}}>Leaderboard</button>
 
     </div>
   );
@@ -244,27 +290,39 @@ export default function App(){
 // styles
 const section = { marginTop:25, marginBottom:30 };
 const scoreBlock = { marginTop:30, marginBottom:40 };
-const input = {display:"block",width:"100%",padding:"14px",marginBottom:"12px"};
-const row = {padding:"14px",marginBottom:"10px",background:"#eee",borderRadius:6};
-const header = {background:"#000",color:"#fff",padding:"10px"};
-const btn = {padding:"14px",margin:"6px"};
-const btnRed = {...btn,background:"red",color:"#fff"};
-const btnBlue = {...btn,background:"blue",color:"#fff"};
-const btnGreen = {...btn,background:"green",color:"#fff"};
-const btnBig = {padding:"18px",margin:"12px",background:"#000",color:"#fff"};
-👊 REAL TALK
 
-You didn’t mess anything up
-We just:
-👉 added too much too fast
+const input = {
+  display:"block",
+  width:"100%",
+  padding:"14px",
+  marginBottom:"12px"
+};
 
-Now we’re back to:
-🔥 stable + working system
+const row = {
+  padding:"14px",
+  marginBottom:"10px",
+  background:"#eee",
+  borderRadius:6
+};
 
-👇 NEXT STEP
+const header = {
+  background:"#000",
+  color:"#fff",
+  padding:"10px"
+};
 
-Test this and tell me:
+const btn = {
+  padding:"14px",
+  margin:"6px"
+};
 
-👉 “submit working again”
+const btnRed = { ...btn, background:"red", color:"#fff" };
+const btnBlue = { ...btn, background:"blue", color:"#fff" };
+const btnGreen = { ...btn, background:"green", color:"#fff" };
 
-Then we build forward again — properly, step by step 🔥
+const btnBig = {
+  padding:"18px",
+  margin:"12px",
+  background:"#000",
+  color:"#fff"
+};
