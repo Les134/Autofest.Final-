@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, getDocs } from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5NhDJMBwhMpUUL3XIHUnISTuCeQkXKS8",
@@ -54,8 +54,8 @@ export default function App() {
   const setScore = (cat,val)=> setScores({...scores,[cat]:val});
   const toggleDeduction = d => setDeductions(prev=>({...prev,[d]:!prev[d]}));
 
-  // 🚀 FIXED FAST SUBMIT
-  const submit = ()=>{
+  // 🔥 HARD FIX SUBMIT (WITH TIMEOUT)
+  const submit = async ()=>{
     if(saving) return;
 
     if(!car && !driver && !rego && !carName){
@@ -74,14 +74,25 @@ export default function App() {
     const deductionsTotal = Object.values(deductions).filter(v=>v).length * 10;
     const finalScore = total - deductionsTotal;
 
-    addDoc(collection(db,"scores"),{
-      car, driver, rego, carName,
-      gender, carClass,
-      scores,
-      finalScore,
-      created: Date.now()
-    })
-    .then(()=>{
+    try {
+      console.log("🚀 Sending...");
+
+      // ⏱ timeout safety (3 seconds max)
+      await Promise.race([
+        addDoc(collection(db,"scores"),{
+          car, driver, rego, carName,
+          gender, carClass,
+          scores,
+          finalScore,
+          created: serverTimestamp()
+        }),
+        new Promise((_, reject)=>
+          setTimeout(()=>reject(new Error("Timeout")),3000)
+        )
+      ]);
+
+      console.log("✅ SAVED");
+
       setSaved(true);
 
       // instant reset
@@ -91,19 +102,23 @@ export default function App() {
       setGender(""); setCarClass("");
 
       setTimeout(()=>setSaved(false),500);
-    })
-    .catch(()=>{
-      alert("Save failed");
-    })
-    .finally(()=>{
-      setSaving(false);
-    });
+
+    } catch (err){
+      console.error("❌ ERROR:", err);
+
+      if(err.message === "Timeout"){
+        alert("Save taking too long — check internet");
+      } else {
+        alert("Save failed — open console (F12)");
+      }
+    }
+
+    setSaving(false);
   };
 
   const buildTop150 = async ()=>{
     const q = await getDocs(collection(db,"scores"));
     const data = q.docs.map(d=>({id:d.id,...d.data()}));
-
     setTop150(data.sort((a,b)=>b.finalScore-a.finalScore).slice(0,150));
     setScreen("top150");
   };
@@ -111,20 +126,8 @@ export default function App() {
   const buildTop30 = async ()=>{
     const q = await getDocs(collection(db,"scores"));
     const data = q.docs.map(d=>({id:d.id,...d.data()}));
-
     setTop30(data.sort((a,b)=>b.finalScore-a.finalScore).slice(0,30));
     setScreen("top30");
-  };
-
-  const getWinners = ()=>{
-    const result = {};
-    classes.forEach(c=>{
-      result[c] = top30
-        .filter(e=>e.carClass===c)
-        .sort((a,b)=>b.finalScore-a.finalScore)
-        .slice(0,3);
-    });
-    return result;
   };
 
   if(screen==="home"){
@@ -163,26 +166,7 @@ export default function App() {
           </div>
         ))}
 
-        <button style={btnBig} onClick={()=>setScreen("results")}>RESULTS</button>
-      </div>
-    );
-  }
-
-  if(screen==="results"){
-    const winners = getWinners();
-
-    return (
-      <div style={{padding:20}}>
-        <h1>🏆 RESULTS</h1>
-
-        {classes.map(c=>(
-          <div key={c}>
-            <h2>{c}</h2>
-            <div>🥇 {winners[c][0]?.driver || "-"}</div>
-            <div>🥈 {winners[c][1]?.driver || "-"}</div>
-            <div>🥉 {winners[c][2]?.driver || "-"}</div>
-          </div>
-        ))}
+        <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
       </div>
     );
   }
@@ -272,27 +256,12 @@ const row = {
 const btn = {
   padding:"16px",
   margin:"8px",
-  fontSize:"16px",
-  minWidth:"60px"
+  fontSize:"16px"
 };
 
-const btnRed = {
-  ...btn,
-  background:"red",
-  color:"#fff"
-};
-
-const btnBlue = {
-  ...btn,
-  background:"blue",
-  color:"#fff"
-};
-
-const btnActive = {
-  ...btn,
-  background:"green",
-  color:"#fff"
-};
+const btnRed = {...btn, background:"red", color:"#fff"};
+const btnBlue = {...btn, background:"blue", color:"#fff"};
+const btnActive = {...btn, background:"green", color:"#fff"};
 
 const btnBig = {
   padding:"18px",
