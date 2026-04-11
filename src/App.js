@@ -29,14 +29,20 @@ export default function App(){
   const [deductions,setDeductions] = useState({});
   const [saving,setSaving] = useState(false);
 
-  const [top150,setTop150] = useState([]);
+  const [topData,setTopData] = useState([]);
   const [screen,setScreen] = useState("judge");
   const [loading,setLoading] = useState(false);
 
-  const setScore = (cat,val)=> setScores(prev=>({...prev,[cat]:val}));
-  const toggleDeduction = d => setDeductions(prev=>({...prev,[d]:!prev[d]}));
+  // ⚡ FASTER SCORE UPDATE
+  const setScore = (cat,val)=>{
+    setScores(prev => ({...prev,[cat]:val}));
+  };
 
-  // 🔥 FAST + SAFE SUBMIT
+  const toggleDeduction = d=>{
+    setDeductions(prev=>({...prev,[d]:!prev[d]}));
+  };
+
+  // 🚀 FAST SUBMIT
   const submit = async ()=>{
     if(saving) return;
 
@@ -61,67 +67,77 @@ export default function App(){
         addDoc(collection(db,"scores"),{
           car, driver, rego, carName,
           gender, carClass,
-          scores,
-          finalScore,
-          created: Date.now()
+          finalScore
         }),
         new Promise((_,reject)=>setTimeout(()=>reject(),3000))
       ]);
     } catch {}
 
-    // reset form
+    // reset instantly
     setScores({});
     setDeductions({});
-    setCar("");
-    setDriver("");
-    setRego("");
-    setCarName("");
-    setGender("");
-    setCarClass("");
+    setCar(""); setDriver(""); setRego(""); setCarName("");
+    setGender(""); setCarClass("");
 
     setSaving(false);
   };
 
-  // 🔥 FAST TOP150 WITH LOADING
-  const buildTop150 = async ()=>{
+  // 🔥 GROUPED LEADERBOARD
+  const buildLeaderboard = async ()=>{
     setLoading(true);
-    setScreen("top150");
+    setScreen("leaderboard");
 
-    try {
-      const q = await getDocs(collection(db,"scores"));
-      const data = q.docs.map(d=>d.data());
+    const q = await getDocs(collection(db,"scores"));
+    const data = q.docs.map(d=>d.data());
 
-      const sorted = data
-        .sort((a,b)=>b.finalScore-a.finalScore)
-        .slice(0,150);
-
-      setTop150(sorted);
-
-    } catch {
-      alert("Error loading scores");
-    }
-
+    setTopData(data);
     setLoading(false);
   };
 
-  // 🔥 TOP150 SCREEN
-  if(screen==="top150"){
+  // 🔥 GROUP BY CLASS + GENDER
+  const grouped = {};
+
+  topData.forEach(entry=>{
+    const key = `${entry.carClass || "Unknown"} - ${entry.gender || "Unknown"}`;
+    if(!grouped[key]) grouped[key] = [];
+    grouped[key].push(entry);
+  });
+
+  // sort each group
+  Object.keys(grouped).forEach(key=>{
+    grouped[key].sort((a,b)=>b.finalScore-a.finalScore);
+  });
+
+  // 🏁 LEADERBOARD SCREEN
+  if(screen==="leaderboard"){
     return (
       <div style={{padding:20}}>
-        <h2>🏁 TOP 150</h2>
+        <h2>🏁 LEADERBOARD</h2>
 
         {loading && <h3>Loading...</h3>}
 
-        {!loading && top150.map((e,i)=>(
-          <div key={i} style={{
-            padding:15,
-            marginBottom:12,
-            background:"#eee",
-            borderRadius:6,
-            fontSize:"18px",
-            fontWeight:"bold"
-          }}>
-            #{i+1} | Car No: {e.car || "-"} | Total Score: {e.finalScore || 0}
+        {!loading && Object.keys(grouped).map(group=>(
+          <div key={group} style={{marginBottom:30}}>
+
+            <h3 style={{
+              background:"#000",
+              color:"#fff",
+              padding:10
+            }}>
+              {group}
+            </h3>
+
+            {grouped[group].map((e,i)=>(
+              <div key={i} style={{
+                padding:12,
+                marginBottom:8,
+                background:"#eee",
+                borderRadius:6,
+                fontWeight:"bold"
+              }}>
+                #{i+1} | Car No: {e.car || "-"} | Total Score: {e.finalScore}
+              </div>
+            ))}
           </div>
         ))}
 
@@ -191,17 +207,16 @@ export default function App(){
         {saving ? "Saving..." : "Submit"}
       </button>
 
-      <button style={btnBig} onClick={buildTop150}>
-        Top 150
+      <button style={btnBig} onClick={buildLeaderboard}>
+        View Leaderboard
       </button>
 
     </div>
   );
 }
 
-// 🔥 STYLES
+// styles
 const section = { marginTop:25, marginBottom:30 };
-
 const scoreBlock = { marginTop:30, marginBottom:40 };
 
 const input = {
@@ -215,8 +230,7 @@ const input = {
 const btn = {
   padding:"14px",
   margin:"6px",
-  fontSize:"16px",
-  minWidth:"50px"
+  fontSize:"16px"
 };
 
 const btnRed = { ...btn, background:"red", color:"#fff" };
