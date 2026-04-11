@@ -18,10 +18,8 @@ const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
 export default function App(){
 
   const [screen,setScreen] = useState("judgeSelect");
-
   const [judge,setJudge] = useState("");
 
-  // 🔥 JUDGE NAMES BACK
   const [judgeNames,setJudgeNames] = useState({
     1:"Judge 1",
     2:"Judge 2",
@@ -58,7 +56,6 @@ export default function App(){
   const setScore = (cat,val)=> setScores(prev=>({...prev,[cat]:val}));
   const toggleDeduction = d => setDeductions(prev=>({...prev,[d]:!prev[d]}));
 
-  // SUBMIT
   const submit = ()=>{
     const total = Object.values(scores).reduce((a,b)=>a+b,0);
     const deductionsTotal = Object.values(deductions).filter(v=>v).length * 10;
@@ -85,17 +82,24 @@ export default function App(){
     addDoc(collection(db,"scores"), payload).catch(()=>{});
   };
 
-  // 🔥 COMBINE SCORES
+  // ✅ FIX 1 — SMART COMBINE
   const combineScores = ()=>{
     const combined = {};
 
     data.forEach(entry=>{
-      const key = entry.car || entry.rego || "Unknown";
+      const key =
+        entry.car ||
+        entry.rego ||
+        entry.driver ||
+        entry.carName ||
+        "Unknown";
 
       if(!combined[key]){
         combined[key] = {
           car: entry.car,
           driver: entry.driver,
+          rego: entry.rego,
+          carName: entry.carName,
           carClass: entry.carClass,
           gender: entry.gender,
           total: 0
@@ -108,8 +112,16 @@ export default function App(){
     return Object.values(combined);
   };
 
+  // ✅ FIX 3 — SAFE TOP150
   const buildTop150 = ()=>{
-    const sorted = combineScores()
+    const combined = combineScores();
+
+    if(combined.length === 0){
+      alert("No scores yet");
+      return;
+    }
+
+    const sorted = combined
       .sort((a,b)=>b.total-a.total)
       .slice(0,150);
 
@@ -142,7 +154,6 @@ export default function App(){
               value={judgeNames[j]}
               onChange={e=>setJudgeNames({...judgeNames,[j]:e.target.value})}
             />
-
             <button style={btnBig} onClick={()=>{setJudge(j);setScreen("judge");}}>
               {judgeNames[j]}
             </button>
@@ -159,7 +170,12 @@ export default function App(){
 
         {top150.map((e,i)=>(
           <div key={i} style={row}>
-            #{i+1} | Car No: {e.car} | Total Score: {e.total}
+            #{i+1} |
+            {e.car && ` Car No: ${e.car} |`}
+            {e.driver && ` Driver: ${e.driver} |`}
+            {e.rego && ` Rego: ${e.rego} |`}
+            {e.carName && ` Car: ${e.carName} |`}
+            Score: {e.total}
           </div>
         ))}
 
@@ -185,7 +201,12 @@ export default function App(){
 
             {grouped[group].map((e,i)=>(
               <div key={i} style={row}>
-                #{i+1} | Car No: {e.car} | Total Score: {e.total}
+                #{i+1} |
+                {e.car && ` Car No: ${e.car} |`}
+                {e.driver && ` Driver: ${e.driver} |`}
+                {e.rego && ` Rego: ${e.rego} |`}
+                {e.carName && ` Car: ${e.carName} |`}
+                Score: {e.total}
               </div>
             ))}
           </div>
