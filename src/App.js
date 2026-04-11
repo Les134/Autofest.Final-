@@ -312,19 +312,3 @@ const btnRed = {...btn,background:"red",color:"#fff"};
 const btnBlue = {...btn,background:"blue",color:"#fff"};
 const btnGreen = {...btn,background:"green",color:"#fff"};
 const btnBig = {padding:"18px",margin:"12px",background:"#000",color:"#fff"};
-💥 AFTER THIS
-
-👉 Submit will:
-
-Work instantly
-Show in leaderboard
-Show in Top 150
-Not feel broken
-👊 NEXT STEP
-
-After you deploy:
-
-👉 tell me: “submit fixed”
-
-Then we move to:
-🔥 making it installable on phones (proper app)
