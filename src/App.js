@@ -54,7 +54,8 @@ export default function App() {
   const setScore = (cat,val)=> setScores({...scores,[cat]:val});
   const toggleDeduction = d => setDeductions(prev=>({...prev,[d]:!prev[d]}));
 
-  const submit = async ()=>{
+  // 🚀 FIXED FAST SUBMIT
+  const submit = ()=>{
     if(saving) return;
 
     if(!car && !driver && !rego && !carName){
@@ -73,34 +74,37 @@ export default function App() {
     const deductionsTotal = Object.values(deductions).filter(v=>v).length * 10;
     const finalScore = total - deductionsTotal;
 
-    await addDoc(collection(db,"scores"),{
+    addDoc(collection(db,"scores"),{
       car, driver, rego, carName,
       gender, carClass,
       scores,
-      finalScore
-    });
+      finalScore,
+      created: Date.now()
+    })
+    .then(()=>{
+      setSaved(true);
 
-    setSaved(true);
-
-    setTimeout(()=>{
+      // instant reset
       setScores({});
       setDeductions({});
       setCar(""); setDriver(""); setRego(""); setCarName("");
       setGender(""); setCarClass("");
-      setSaved(false);
-    },700);
 
-    setSaving(false);
+      setTimeout(()=>setSaved(false),500);
+    })
+    .catch(()=>{
+      alert("Save failed");
+    })
+    .finally(()=>{
+      setSaving(false);
+    });
   };
 
   const buildTop150 = async ()=>{
     const q = await getDocs(collection(db,"scores"));
     const data = q.docs.map(d=>({id:d.id,...d.data()}));
 
-    setTop150(
-      data.sort((a,b)=>b.finalScore-a.finalScore).slice(0,150)
-    );
-
+    setTop150(data.sort((a,b)=>b.finalScore-a.finalScore).slice(0,150));
     setScreen("top150");
   };
 
@@ -108,10 +112,7 @@ export default function App() {
     const q = await getDocs(collection(db,"scores"));
     const data = q.docs.map(d=>({id:d.id,...d.data()}));
 
-    setTop30(
-      data.sort((a,b)=>b.finalScore-a.finalScore).slice(0,30)
-    );
-
+    setTop30(data.sort((a,b)=>b.finalScore-a.finalScore).slice(0,30));
     setScreen("top30");
   };
 
@@ -262,15 +263,17 @@ const input = {
 };
 
 const row = {
-  padding:"10px",
-  marginBottom:"8px",
-  background:"#eee"
+  padding:"12px",
+  marginBottom:"10px",
+  background:"#eee",
+  borderRadius:"6px"
 };
 
 const btn = {
   padding:"16px",
-  margin:"6px",
-  fontSize:"16px"
+  margin:"8px",
+  fontSize:"16px",
+  minWidth:"60px"
 };
 
 const btnRed = {
