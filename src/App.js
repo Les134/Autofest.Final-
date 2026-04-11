@@ -13,7 +13,6 @@ const db = getFirestore(app);
 
 const categories = ["Smoke","Commitment","Style","Control","Entertainment"];
 const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","Rotary"];
-const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
 
 export default function App(){
 
@@ -21,12 +20,8 @@ export default function App(){
   const [judge,setJudge] = useState("");
 
   const [judgeNames,setJudgeNames] = useState({
-    1:"Judge 1",
-    2:"Judge 2",
-    3:"Judge 3",
-    4:"Judge 4",
-    5:"Judge 5",
-    6:"Judge 6"
+    1:"Judge 1",2:"Judge 2",3:"Judge 3",
+    4:"Judge 4",5:"Judge 5",6:"Judge 6"
   });
 
   const [data,setData] = useState([]);
@@ -43,23 +38,47 @@ export default function App(){
   const [scores,setScores] = useState({});
   const [deductions,setDeductions] = useState({});
 
+  // 🔥 LOAD + SYNC
   useEffect(()=>{
     loadData();
+    syncOffline();
   },[]);
 
   const loadData = async ()=>{
     const q = await getDocs(collection(db,"scores"));
-    const d = q.docs.map(doc=>doc.data());
-    setData(d);
+    setData(q.docs.map(doc=>doc.data()));
+  };
+
+  // 🔥 OFFLINE SAVE
+  const saveOffline = (data)=>{
+    const existing = JSON.parse(localStorage.getItem("offlineScores") || "[]");
+    existing.push(data);
+    localStorage.setItem("offlineScores", JSON.stringify(existing));
+  };
+
+  // 🔥 SYNC OFFLINE
+  const syncOffline = async ()=>{
+    const offline = JSON.parse(localStorage.getItem("offlineScores") || "[]");
+
+    if(offline.length === 0) return;
+
+    for(const item of offline){
+      try{
+        await addDoc(collection(db,"scores"), item);
+      }catch{
+        return;
+      }
+    }
+
+    localStorage.removeItem("offlineScores");
   };
 
   const setScore = (cat,val)=> setScores(prev=>({...prev,[cat]:val}));
-  const toggleDeduction = d => setDeductions(prev=>({...prev,[d]:!prev[d]}));
 
-  const submit = ()=>{
+  // 🔥 SUBMIT (FAST + OFFLINE SAFE)
+  const submit = async ()=>{
     const total = Object.values(scores).reduce((a,b)=>a+b,0);
-    const deductionsTotal = Object.values(deductions).filter(v=>v).length * 10;
-    const finalScore = total - deductionsTotal;
+    const finalScore = total;
 
     const payload = {
       judge,
@@ -69,20 +88,31 @@ export default function App(){
       carName,
       gender,
       carClass,
-      finalScore
+      finalScore,
+      time: Date.now()
     };
 
-    setData(prev => [...prev, payload]);
+    // save locally first
+    saveOffline(payload);
 
+    try{
+      await addDoc(collection(db,"scores"), payload);
+
+      let offline = JSON.parse(localStorage.getItem("offlineScores") || "[]");
+      offline.shift();
+      localStorage.setItem("offlineScores", JSON.stringify(offline));
+
+    }catch{
+      console.log("offline mode");
+    }
+
+    // reset UI
     setScores({});
-    setDeductions({});
     setCar(""); setDriver(""); setRego(""); setCarName("");
     setGender(""); setCarClass("");
-
-    addDoc(collection(db,"scores"), payload).catch(()=>{});
   };
 
-  // ✅ FIX 1 — SMART COMBINE
+  // 🔥 COMBINE (FIXED)
   const combineScores = ()=>{
     const combined = {};
 
@@ -112,7 +142,7 @@ export default function App(){
     return Object.values(combined);
   };
 
-  // ✅ FIX 3 — SAFE TOP150
+  // 🔥 TOP 150 SAFE
   const buildTop150 = ()=>{
     const combined = combineScores();
 
@@ -121,11 +151,10 @@ export default function App(){
       return;
     }
 
-    const sorted = combined
-      .sort((a,b)=>b.total-a.total)
-      .slice(0,150);
+    setTop150(
+      combined.sort((a,b)=>b.total-a.total).slice(0,150)
+    );
 
-    setTop150(sorted);
     setScreen("top150");
   };
 
@@ -148,7 +177,7 @@ export default function App(){
         <h2>Select Judge</h2>
 
         {[1,2,3,4,5,6].map(j=>(
-          <div key={j} style={{marginBottom:15}}>
+          <div key={j}>
             <input
               style={input}
               value={judgeNames[j]}
@@ -166,7 +195,7 @@ export default function App(){
   if(screen==="top150"){
     return (
       <div style={{padding:20}}>
-        <h2>🏁 TOP 150</h2>
+        <h2>TOP 150</h2>
 
         {top150.map((e,i)=>(
           <div key={i} style={row}>
@@ -180,7 +209,7 @@ export default function App(){
         ))}
 
         <button style={btnBig} onClick={()=>setScreen("leaderboard")}>
-          View Classes
+          Leaderboard
         </button>
 
         <button style={btnBig} onClick={()=>setScreen("judge")}>
@@ -193,10 +222,10 @@ export default function App(){
   if(screen==="leaderboard"){
     return (
       <div style={{padding:20}}>
-        <h2>🏁 Leaderboard</h2>
+        <h2>Leaderboard</h2>
 
         {Object.keys(grouped).map(group=>(
-          <div key={group} style={{marginBottom:30}}>
+          <div key={group}>
             <h3 style={header}>{group}</h3>
 
             {grouped[group].map((e,i)=>(
@@ -229,23 +258,8 @@ export default function App(){
       <input style={input} placeholder="Rego" value={rego} onChange={e=>setRego(e.target.value)}/>
       <input style={input} placeholder="Car Name" value={carName} onChange={e=>setCarName(e.target.value)}/>
 
-      <div style={section}>
-        <button style={gender==="Male"?btnGreen:btn} onClick={()=>setGender("Male")}>Male</button>
-        <button style={gender==="Female"?btnGreen:btn} onClick={()=>setGender("Female")}>Female</button>
-      </div>
-
-      <div style={section}>
-        {classes.map(c=>(
-          <button key={c}
-            onClick={()=>setCarClass(c)}
-            style={carClass===c?btnBlue:btn}>
-            {c}
-          </button>
-        ))}
-      </div>
-
       {categories.map(cat=>(
-        <div key={cat} style={scoreBlock}>
+        <div key={cat} style={{marginTop:20}}>
           <strong>{cat}</strong>
           <div>
             {Array.from({length:21},(_,i)=>(
@@ -260,56 +274,18 @@ export default function App(){
       ))}
 
       <button style={btnBig} onClick={submit}>Submit</button>
-
-      <button style={btnBig} onClick={buildTop150}>
-        Top 150
-      </button>
-
-      <button style={btnBig} onClick={()=>setScreen("leaderboard")}>
-        Leaderboard
-      </button>
+      <button style={btnBig} onClick={buildTop150}>Top 150</button>
+      <button style={btnBig} onClick={()=>setScreen("leaderboard")}>Leaderboard</button>
 
     </div>
   );
 }
 
 // styles
-const section = { marginTop:25, marginBottom:30 };
-const scoreBlock = { marginTop:30, marginBottom:40 };
-
-const input = {
-  display:"block",
-  width:"100%",
-  padding:"14px",
-  marginBottom:"12px"
-};
-
-const row = {
-  padding:"14px",
-  marginBottom:"10px",
-  background:"#eee",
-  borderRadius:6,
-  fontWeight:"bold"
-};
-
-const header = {
-  background:"#000",
-  color:"#fff",
-  padding:"10px"
-};
-
-const btn = {
-  padding:"14px",
-  margin:"6px"
-};
-
-const btnRed = { ...btn, background:"red", color:"#fff" };
-const btnBlue = { ...btn, background:"blue", color:"#fff" };
-const btnGreen = { ...btn, background:"green", color:"#fff" };
-
-const btnBig = {
-  padding:"18px",
-  margin:"12px",
-  background:"#000",
-  color:"#fff"
-};
+const input = {display:"block",width:"100%",padding:"14px",marginBottom:"12px"};
+const row = {padding:"14px",marginBottom:"10px",background:"#eee",borderRadius:6};
+const header = {background:"#000",color:"#fff",padding:"10px"};
+const btn = {padding:"14px",margin:"6px"};
+const btnRed = {...btn,background:"red",color:"#fff"};
+const btnBig = {padding:"18px",margin:"12px",background:"#000",color:"#fff"};
+💥 NOW YOU HAVE
