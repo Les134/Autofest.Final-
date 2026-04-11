@@ -20,10 +20,8 @@ export default function App(){
   const [screen,setScreen] = useState("judgeSelect");
   const [judge,setJudge] = useState("");
 
-  const [judgeNames,setJudgeNames] = useState({
-    1:"Judge 1",2:"Judge 2",3:"Judge 3",
-    4:"Judge 4",5:"Judge 5",6:"Judge 6"
-  });
+  const [data,setData] = useState([]);
+  const [top150,setTop150] = useState([]);
 
   const [car,setCar] = useState("");
   const [driver,setDriver] = useState("");
@@ -36,10 +34,11 @@ export default function App(){
   const [scores,setScores] = useState({});
   const [deductions,setDeductions] = useState({});
 
-  const [data,setData] = useState([]);
-  const [top150,setTop150] = useState([]);
+  // 🔥 LOAD DATA ON START (KEY FIX)
+  useEffect(()=>{
+    loadData();
+  },[]);
 
-  // 🔥 OFFLINE SYNC SAFE LOAD
   const loadData = async ()=>{
     const q = await getDocs(collection(db,"scores"));
     const d = q.docs.map(doc=>doc.data());
@@ -49,35 +48,38 @@ export default function App(){
   const setScore = (cat,val)=> setScores(prev=>({...prev,[cat]:val}));
   const toggleDeduction = d => setDeductions(prev=>({...prev,[d]:!prev[d]}));
 
-  // 🔥 FIXED SUBMIT (NO FREEZE)
   const submit = ()=>{
     const total = Object.values(scores).reduce((a,b)=>a+b,0);
     const deductionsTotal = Object.values(deductions).filter(v=>v).length * 10;
     const finalScore = total - deductionsTotal;
 
     const payload = {
-      judge,
       car, driver, rego, carName,
       gender, carClass,
       finalScore
     };
 
-    // instant reset
+    // update UI instantly
+    setData(prev => [...prev, payload]);
+
+    // reset form
     setScores({});
     setDeductions({});
     setCar(""); setDriver(""); setRego(""); setCarName("");
     setGender(""); setCarClass("");
 
-    // background save
+    // save async
     addDoc(collection(db,"scores"), payload).catch(()=>{});
   };
 
-  // 🔥 FIXED TOP150
-  const buildTop150 = async ()=>{
-    const q = await getDocs(collection(db,"scores"));
-    const d = q.docs.map(doc=>doc.data());
+  // 🔥 INSTANT TOP150 (NO FIREBASE CALL)
+  const buildTop150 = ()=>{
+    if(data.length === 0){
+      alert("No scores yet");
+      return;
+    }
 
-    const sorted = d
+    const sorted = [...data]
       .sort((a,b)=>b.finalScore-a.finalScore)
       .slice(0,150);
 
@@ -85,7 +87,7 @@ export default function App(){
     setScreen("top150");
   };
 
-  // 🔥 GROUPED
+  // GROUPED
   const grouped = {};
   data.forEach(e=>{
     const key = `${e.carClass || "Unknown"} - ${e.gender || "Unknown"}`;
@@ -96,8 +98,6 @@ export default function App(){
   Object.keys(grouped).forEach(k=>{
     grouped[k].sort((a,b)=>b.finalScore-a.finalScore);
   });
-
-  // 🔥 SCREENS
 
   if(screen==="top150"){
     return (
@@ -115,7 +115,7 @@ export default function App(){
         </button>
 
         <button style={btnBig} onClick={()=>setScreen("judge")}>
-          Back to Judging
+          Back
         </button>
       </div>
     );
@@ -138,9 +138,8 @@ export default function App(){
           </div>
         ))}
 
-        {/* 🔥 FIXED BACK BUTTON */}
         <button style={btnBig} onClick={()=>setScreen("judge")}>
-          Back to Judging
+          Back
         </button>
       </div>
     );
@@ -152,16 +151,9 @@ export default function App(){
         <h2>Select Judge</h2>
 
         {[1,2,3,4,5,6].map(j=>(
-          <div key={j} style={{marginBottom:15}}>
-            <input
-              style={input}
-              value={judgeNames[j]}
-              onChange={e=>setJudgeNames({...judgeNames,[j]:e.target.value})}
-            />
-            <button style={btnBig} onClick={()=>{setJudge(j);setScreen("judge");}}>
-              {judgeNames[j]}
-            </button>
-          </div>
+          <button key={j} style={btnBig} onClick={()=>{setJudge(j);setScreen("judge");}}>
+            Judge {j}
+          </button>
         ))}
       </div>
     );
@@ -170,7 +162,7 @@ export default function App(){
   return (
     <div style={{padding:20}}>
 
-      <h2>{judgeNames[judge]}</h2>
+      <h2>Judge {judge}</h2>
 
       <input style={input} placeholder="Car #" value={car} onChange={e=>setCar(e.target.value)}/>
       <input style={input} placeholder="Driver" value={driver} onChange={e=>setDriver(e.target.value)}/>
@@ -224,15 +216,15 @@ export default function App(){
         Top 150
       </button>
 
-      <button style={btnBig} onClick={()=>{loadData();setScreen("leaderboard");}}>
-        View Leaderboard
+      <button style={btnBig} onClick={()=>setScreen("leaderboard")}>
+        Leaderboard
       </button>
 
     </div>
   );
 }
 
-// STYLES
+// styles
 const section = { marginTop:25, marginBottom:30 };
 const scoreBlock = { marginTop:30, marginBottom:40 };
 
