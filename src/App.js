@@ -98,7 +98,7 @@ export default function App(){
       time: Date.now()
     };
 
-    // instant UI update
+    // 🔥 FIX: instant UI update
     setData(prev => [...prev, payload]);
 
     saveOffline(payload);
@@ -110,14 +110,11 @@ export default function App(){
       offline.shift();
       localStorage.setItem("offlineScores", JSON.stringify(offline));
 
-      // 🔥 CRITICAL FIX — reload data from Firebase
-      await loadData();
-
     }catch{
       console.log("offline mode");
     }
 
-    // reset form
+    // reset
     setScores({});
     setCar("");
     setDriver("");
@@ -183,7 +180,7 @@ export default function App(){
     grouped[k].sort((a,b)=>b.total-a.total);
   });
 
-  // ---------- SCREENS ----------
+  // SCREENS
 
   if(screen==="judgeSelect"){
     return (
@@ -265,11 +262,13 @@ export default function App(){
       <input style={input} placeholder="Rego" value={rego} onChange={(e)=>setRego(e.target.value)}/>
       <input style={input} placeholder="Car Name" value={carName} onChange={(e)=>setCarName(e.target.value)}/>
 
+      {/* GENDER */}
       <div style={{marginTop:20}}>
         <button style={gender==="Male"?btnGreen:btn} onClick={()=>setGender("Male")}>Male</button>
         <button style={gender==="Female"?btnGreen:btn} onClick={()=>setGender("Female")}>Female</button>
       </div>
 
+      {/* CLASS */}
       <div style={{marginTop:20}}>
         {classes.map(c=>(
           <button key={c}
@@ -312,19 +311,3 @@ const btnRed = {...btn,background:"red",color:"#fff"};
 const btnBlue = {...btn,background:"blue",color:"#fff"};
 const btnGreen = {...btn,background:"green",color:"#fff"};
 const btnBig = {padding:"18px",margin:"12px",background:"#000",color:"#fff"};
-💥 AFTER THIS
-
-👉 Submit will:
-
-Work instantly
-Show in leaderboard
-Show in Top 150
-Not feel broken
-👊 NEXT STEP
-
-After you deploy:
-
-👉 tell me: “submit fixed”
-
-Then we move to:
-🔥 making it installable on phones (proper app)
