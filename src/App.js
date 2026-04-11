@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDocs } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5NhDJMBwhMpUUL3XIHUnISTuCeQkXKS8",
@@ -33,7 +33,7 @@ const deductionsList = [
 const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","Rotary"];
 
 export default function App() {
-  const [screen, setScreen] = useState("home");
+  const [screen, setScreen] = useState("judge");
 
   const [car, setCar] = useState("");
   const [driver, setDriver] = useState("");
@@ -46,7 +46,6 @@ export default function App() {
   const [scores, setScores] = useState({});
   const [deductions, setDeductions] = useState({});
   const [top150, setTop150] = useState([]);
-  const [top30, setTop30] = useState([]);
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -54,7 +53,7 @@ export default function App() {
   const setScore = (cat,val)=> setScores({...scores,[cat]:val});
   const toggleDeduction = d => setDeductions(prev=>({...prev,[d]:!prev[d]}));
 
-  // 🔥 HARD FIX SUBMIT (WITH TIMEOUT)
+  // ✅ FIXED SUBMIT
   const submit = async ()=>{
     if(saving) return;
 
@@ -75,69 +74,63 @@ export default function App() {
     const finalScore = total - deductionsTotal;
 
     try {
-      console.log("🚀 Sending...");
-
-      // ⏱ timeout safety (3 seconds max)
-      await Promise.race([
-        addDoc(collection(db,"scores"),{
-          car, driver, rego, carName,
-          gender, carClass,
-          scores,
-          finalScore,
-          created: serverTimestamp()
-        }),
-        new Promise((_, reject)=>
-          setTimeout(()=>reject(new Error("Timeout")),3000)
-        )
-      ]);
-
-      console.log("✅ SAVED");
+      await addDoc(collection(db,"scores"),{
+        car, driver, rego, carName,
+        gender, carClass,
+        scores,
+        finalScore,
+        created: Date.now()
+      });
 
       setSaved(true);
 
-      // instant reset
+      // 🔥 FULL RESET (FIXES YOUR ISSUE)
       setScores({});
       setDeductions({});
-      setCar(""); setDriver(""); setRego(""); setCarName("");
-      setGender(""); setCarClass("");
+      setCar("");
+      setDriver("");
+      setRego("");
+      setCarName("");
+      setGender("");
+      setCarClass("");
 
       setTimeout(()=>setSaved(false),500);
 
     } catch (err){
-      console.error("❌ ERROR:", err);
-
-      if(err.message === "Timeout"){
-        alert("Save taking too long — check internet");
-      } else {
-        alert("Save failed — open console (F12)");
-      }
+      console.error(err);
+      alert("Save failed");
     }
 
     setSaving(false);
   };
 
+  // ✅ FIXED TOP150
   const buildTop150 = async ()=>{
-    const q = await getDocs(collection(db,"scores"));
-    const data = q.docs.map(d=>({id:d.id,...d.data()}));
-    setTop150(data.sort((a,b)=>b.finalScore-a.finalScore).slice(0,150));
-    setScreen("top150");
-  };
+    try {
+      const q = await getDocs(collection(db,"scores"));
 
-  const buildTop30 = async ()=>{
-    const q = await getDocs(collection(db,"scores"));
-    const data = q.docs.map(d=>({id:d.id,...d.data()}));
-    setTop30(data.sort((a,b)=>b.finalScore-a.finalScore).slice(0,30));
-    setScreen("top30");
-  };
+      const data = q.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
 
-  if(screen==="home"){
-    return (
-      <div style={home}>
-        <h1 style={{color:"#fff"}}>AUTO FEST</h1>
-        <button style={btnBig} onClick={()=>setScreen("judge")}>START</button>
-      </div>
-    );
-  }
+      if(data.length === 0){
+        alert("No scores yet");
+        return;
+      }
+
+      const sorted = data
+        .sort((a,b)=>(b.finalScore || 0)-(a.finalScore || 0))
+        .slice(0,150);
+
+      setTop150(sorted);
+      setScreen("top150");
+
+    } catch (err){
+      console.error(err);
+      alert("Failed to load leaderboard");
+    }
+  };
 
   if(screen==="top150"){
     return (
@@ -147,22 +140,6 @@ export default function App() {
         {top150.map((e,i)=>(
           <div key={i} style={row}>
             #{i+1} | {e.driver || e.car || e.rego} | {e.finalScore}
-          </div>
-        ))}
-
-        <button style={btnBig} onClick={buildTop30}>Top 30</button>
-      </div>
-    );
-  }
-
-  if(screen==="top30"){
-    return (
-      <div style={{padding:20}}>
-        <h2>🔥 TOP 30</h2>
-
-        {top30.map((e,i)=>(
-          <div key={i} style={row}>
-            #{i+1} | {e.driver || e.car} | {e.finalScore}
           </div>
         ))}
 
@@ -228,15 +205,6 @@ export default function App() {
   );
 }
 
-const home = {
-  background:"#000",
-  height:"100vh",
-  display:"flex",
-  flexDirection:"column",
-  justifyContent:"center",
-  alignItems:"center"
-};
-
 const section = {marginBottom:20};
 
 const input = {
@@ -249,14 +217,12 @@ const input = {
 const row = {
   padding:"12px",
   marginBottom:"10px",
-  background:"#eee",
-  borderRadius:"6px"
+  background:"#eee"
 };
 
 const btn = {
   padding:"16px",
-  margin:"8px",
-  fontSize:"16px"
+  margin:"8px"
 };
 
 const btnRed = {...btn, background:"red", color:"#fff"};
@@ -266,7 +232,6 @@ const btnActive = {...btn, background:"green", color:"#fff"};
 const btnBig = {
   padding:"18px",
   margin:"12px",
-  fontSize:"18px",
   background:"#000",
   color:"#fff"
 };
