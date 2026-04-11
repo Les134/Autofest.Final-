@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+
+  import React, { useState, useEffect } from "react";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, getDocs } from "firebase/firestore";
 
@@ -13,6 +14,7 @@ const db = getFirestore(app);
 
 const categories = ["Smoke","Commitment","Style","Control","Entertainment"];
 const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","Rotary"];
+const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
 
 export default function App(){
 
@@ -20,12 +22,8 @@ export default function App(){
   const [judge,setJudge] = useState("");
 
   const [judgeNames,setJudgeNames] = useState({
-    1:"Judge 1",
-    2:"Judge 2",
-    3:"Judge 3",
-    4:"Judge 4",
-    5:"Judge 5",
-    6:"Judge 6"
+    1:"Judge 1",2:"Judge 2",3:"Judge 3",
+    4:"Judge 4",5:"Judge 5",6:"Judge 6"
   });
 
   const [data,setData] = useState([]);
@@ -40,6 +38,7 @@ export default function App(){
   const [carClass,setCarClass] = useState("");
 
   const [scores,setScores] = useState({});
+  const [deductions,setDeductions] = useState({});
 
   useEffect(function(){
     loadData();
@@ -47,9 +46,7 @@ export default function App(){
 
   function loadData(){
     getDocs(collection(db,"scores")).then(function(q){
-      var d = q.docs.map(function(doc){
-        return doc.data();
-      });
+      var d = q.docs.map(function(doc){ return doc.data(); });
       setData(d);
     });
   }
@@ -62,6 +59,14 @@ export default function App(){
     });
   }
 
+  function toggleDeduction(d){
+    setDeductions(function(prev){
+      var updated = Object.assign({}, prev);
+      updated[d] = !updated[d];
+      return updated;
+    });
+  }
+
   function submit(){
 
     if(Object.keys(scores).length === 0){
@@ -69,9 +74,10 @@ export default function App(){
       return;
     }
 
-    var total = Object.values(scores).reduce(function(a,b){
-      return a + b;
-    },0);
+    var total = Object.values(scores).reduce(function(a,b){ return a+b; },0);
+
+    var deductionCount = Object.values(deductions).filter(function(v){ return v; }).length;
+    var finalScore = total - (deductionCount * 10);
 
     var payload = {
       judge: judge,
@@ -81,21 +87,20 @@ export default function App(){
       carName: carName,
       gender: gender,
       carClass: carClass,
-      finalScore: total
+      finalScore: finalScore
     };
 
-    // instant UI update
     setData(function(prev){
       return prev.concat([payload]);
     });
 
-    // save to Firebase (non-blocking)
     addDoc(collection(db,"scores"), payload).catch(function(){
       console.log("save failed");
     });
 
-    // reset form
+    // reset
     setScores({});
+    setDeductions({});
     setCar("");
     setDriver("");
     setRego("");
@@ -262,6 +267,20 @@ export default function App(){
         })}
       </div>
 
+      {/* 🔥 DEDUCTIONS */}
+      <div style={section}>
+        <strong>Deductions</strong><br/>
+        {deductionsList.map(function(d){
+          return (
+            <button key={d}
+              onClick={function(){toggleDeduction(d);}}
+              style={deductions[d]?btnRed:btn}>
+              {d}
+            </button>
+          );
+        })}
+      </div>
+
       {categories.map(function(cat){
         return (
           <div key={cat} style={scoreBlock}>
@@ -270,7 +289,7 @@ export default function App(){
               {Array.from({length:21},(_,i)=>(
                 <button key={i}
                   onClick={function(){setScore(cat,i);}}
-                  style={scores[cat]===i?btnRed:btn}>
+                  style={scores[cat]===i?btnBlue:btn}>
                   {i}
                 </button>
               ))}
@@ -290,39 +309,28 @@ export default function App(){
 // styles
 const section = { marginTop:25, marginBottom:30 };
 const scoreBlock = { marginTop:30, marginBottom:40 };
+const input = {display:"block",width:"100%",padding:"14px",marginBottom:"12px"};
+const row = {padding:"14px",marginBottom:"10px",background:"#eee",borderRadius:6};
+const header = {background:"#000",color:"#fff",padding:"10px"};
+const btn = {padding:"14px",margin:"6px"};
+const btnRed = {...btn,background:"red",color:"#fff"};
+const btnBlue = {...btn,background:"blue",color:"#fff"};
+const btnGreen = {...btn,background:"green",color:"#fff"};
+const btnBig = {padding:"18px",margin:"12px",background:"#000",color:"#fff"};          
+           
+          
+           
+ 
+  
+           
 
-const input = {
-  display:"block",
-  width:"100%",
-  padding:"14px",
-  marginBottom:"12px"
-};
+   
 
-const row = {
-  padding:"14px",
-  marginBottom:"10px",
-  background:"#eee",
-  borderRadius:6
-};
 
-const header = {
-  background:"#000",
-  color:"#fff",
-  padding:"10px"
-};
+      
+     
+    
 
-const btn = {
-  padding:"14px",
-  margin:"6px"
-};
 
-const btnRed = { ...btn, background:"red", color:"#fff" };
-const btnBlue = { ...btn, background:"blue", color:"#fff" };
-const btnGreen = { ...btn, background:"green", color:"#fff" };
 
-const btnBig = {
-  padding:"18px",
-  margin:"12px",
-  background:"#000",
-  color:"#fff"
-};
+
