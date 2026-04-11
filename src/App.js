@@ -42,7 +42,6 @@ export default function App(){
   const setScore = (cat,val)=> setScores(prev=>({...prev,[cat]:val}));
   const toggleDeduction = d => setDeductions(prev=>({...prev,[d]:!prev[d]}));
 
-  // SUBMIT
   const submit = async ()=>{
     if(saving) return;
 
@@ -71,7 +70,7 @@ export default function App(){
       });
     } catch {}
 
-    // reset
+    // RESET
     setScores({});
     setDeductions({});
     setCar(""); setDriver(""); setRego(""); setCarName("");
@@ -80,14 +79,12 @@ export default function App(){
     setSaving(false);
   };
 
-  // LOAD DATA
   const loadData = async ()=>{
     const q = await getDocs(collection(db,"scores"));
     const d = q.docs.map(doc=>doc.data());
     setData(d);
   };
 
-  // GROUPED DATA
   const grouped = {};
   data.forEach(e=>{
     const key = `${e.carClass || "Unknown"} - ${e.gender || "Unknown"}`;
@@ -99,12 +96,10 @@ export default function App(){
     grouped[k].sort((a,b)=>b.finalScore-a.finalScore);
   });
 
-  // TOP 30
   const top30 = [...data]
     .sort((a,b)=>b.finalScore-a.finalScore)
     .slice(0,30);
 
-  // PODIUM
   const podium = {};
   classes.forEach(c=>{
     podium[c] = top30
@@ -113,7 +108,6 @@ export default function App(){
       .slice(0,3);
   });
 
-  // PRINT
   const printResults = ()=> window.print();
 
   // JUDGE SELECT
@@ -123,12 +117,13 @@ export default function App(){
         <h2>Select Judge</h2>
 
         {[1,2,3,4,5,6].map(j=>(
-          <div key={j}>
+          <div key={j} style={{marginBottom:15}}>
             <input
+              style={input}
               value={judgeNames[j]}
               onChange={e=>setJudgeNames({...judgeNames,[j]:e.target.value})}
             />
-            <button onClick={()=>{setJudge(j);setScreen("judge");}}>
+            <button style={btnBig} onClick={()=>{setJudge(j);setScreen("judge");}}>
               {judgeNames[j]}
             </button>
           </div>
@@ -141,22 +136,23 @@ export default function App(){
   if(screen==="leaderboard"){
     return (
       <div style={{padding:20}}>
-        <h2>Leaderboard</h2>
+        <h2>🏁 Leaderboard</h2>
 
         {Object.keys(grouped).map(group=>(
-          <div key={group}>
-            <h3>{group}</h3>
+          <div key={group} style={{marginBottom:30}}>
+
+            <h3 style={header}>{group}</h3>
 
             {grouped[group].map((e,i)=>(
-              <div key={i}>
-                #{i+1} | Car No: {e.car} | Score: {e.finalScore}
+              <div key={i} style={row}>
+                #{i+1} | Car No: {e.car || "-"} | Total Score: {e.finalScore}
               </div>
             ))}
           </div>
         ))}
 
-        <button onClick={()=>setScreen("top30")}>Top 30 Finals</button>
-        <button onClick={printResults}>Print</button>
+        <button style={btnBig} onClick={()=>setScreen("top30")}>Top 30</button>
+        <button style={btnBig} onClick={printResults}>Print</button>
       </div>
     );
   }
@@ -165,15 +161,15 @@ export default function App(){
   if(screen==="top30"){
     return (
       <div style={{padding:20}}>
-        <h2>Top 30 Finals</h2>
+        <h2>🔥 Top 30 Finals</h2>
 
         {top30.map((e,i)=>(
-          <div key={i}>
-            #{i+1} | {e.car} | {e.finalScore}
+          <div key={i} style={row}>
+            #{i+1} | Car No: {e.car} | Total Score: {e.finalScore}
           </div>
         ))}
 
-        <button onClick={()=>setScreen("podium")}>Show Winners</button>
+        <button style={btnBig} onClick={()=>setScreen("podium")}>Show Winners</button>
       </div>
     );
   }
@@ -185,7 +181,7 @@ export default function App(){
         <h1>🏆 Winners</h1>
 
         {classes.map(c=>(
-          <div key={c}>
+          <div key={c} style={{marginBottom:30}}>
             <h2>{c}</h2>
             <div>🥇 {podium[c][0]?.car || "-"}</div>
             <div>🥈 {podium[c][1]?.car || "-"}</div>
@@ -193,45 +189,112 @@ export default function App(){
           </div>
         ))}
 
-        <button onClick={printResults}>Print Results</button>
+        <button style={btnBig} onClick={printResults}>Print</button>
       </div>
     );
   }
 
   return (
     <div style={{padding:20}}>
+
       <h2>{judgeNames[judge]}</h2>
 
-      <input placeholder="Car #" value={car} onChange={e=>setCar(e.target.value)}/>
-      <input placeholder="Driver" value={driver} onChange={e=>setDriver(e.target.value)}/>
+      <input style={input} placeholder="Car #" value={car} onChange={e=>setCar(e.target.value)}/>
+      <input style={input} placeholder="Driver" value={driver} onChange={e=>setDriver(e.target.value)}/>
+      <input style={input} placeholder="Rego" value={rego} onChange={e=>setRego(e.target.value)}/>
+      <input style={input} placeholder="Car Name" value={carName} onChange={e=>setCarName(e.target.value)}/>
 
-      <div>
-        <button onClick={()=>setGender("Male")}>Male</button>
-        <button onClick={()=>setGender("Female")}>Female</button>
+      <div style={section}>
+        <button style={gender==="Male"?btnGreen:btn} onClick={()=>setGender("Male")}>Male</button>
+        <button style={gender==="Female"?btnGreen:btn} onClick={()=>setGender("Female")}>Female</button>
       </div>
 
-      <div>
+      <div style={section}>
         {classes.map(c=>(
-          <button key={c} onClick={()=>setCarClass(c)}>{c}</button>
+          <button key={c} onClick={()=>setCarClass(c)} style={carClass===c?btnBlue:btn}>
+            {c}
+          </button>
         ))}
       </div>
 
       {categories.map(cat=>(
-        <div key={cat}>
-          <strong>{cat}</strong><br/>
-          {Array.from({length:21},(_,i)=>(
-            <button key={i} onClick={()=>setScore(cat,i)}>{i}</button>
-          ))}
+        <div key={cat} style={scoreBlock}>
+          <strong>{cat}</strong>
+          <div>
+            {Array.from({length:21},(_,i)=>(
+              <button key={i}
+                onClick={()=>setScore(cat,i)}
+                style={scores[cat]===i?btnRed:btn}>
+                {i}
+              </button>
+            ))}
+          </div>
         </div>
       ))}
 
-      <button onClick={submit}>
+      <div style={section}>
+        <h3>Deductions</h3>
+        {deductionsList.map(d=>(
+          <button key={d}
+            onClick={()=>toggleDeduction(d)}
+            style={deductions[d]?btnRed:btn}>
+            {d}
+          </button>
+        ))}
+      </div>
+
+      <button style={btnBig} onClick={submit}>
         {saving ? "Saving..." : "Submit"}
       </button>
 
-      <button onClick={()=>{loadData();setScreen("leaderboard");}}>
+      <button style={btnBig} onClick={()=>{loadData();setScreen("leaderboard");}}>
         View Leaderboard
       </button>
+
     </div>
   );
 }
+
+// STYLES
+const section = { marginTop:25, marginBottom:30 };
+const scoreBlock = { marginTop:30, marginBottom:40 };
+
+const input = {
+  display:"block",
+  width:"100%",
+  padding:"14px",
+  marginBottom:"12px",
+  fontSize:"16px"
+};
+
+const row = {
+  padding:"14px",
+  marginBottom:"10px",
+  background:"#eee",
+  borderRadius:6,
+  fontWeight:"bold"
+};
+
+const header = {
+  background:"#000",
+  color:"#fff",
+  padding:"10px"
+};
+
+const btn = {
+  padding:"14px",
+  margin:"6px",
+  fontSize:"16px"
+};
+
+const btnRed = { ...btn, background:"red", color:"#fff" };
+const btnBlue = { ...btn, background:"blue", color:"#fff" };
+const btnGreen = { ...btn, background:"green", color:"#fff" };
+
+const btnBig = {
+  padding:"18px",
+  margin:"12px",
+  fontSize:"18px",
+  background:"#000",
+  color:"#fff"
+};
