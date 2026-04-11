@@ -36,7 +36,6 @@ export default function App(){
   const [carClass,setCarClass] = useState("");
 
   const [scores,setScores] = useState({});
-  const [deductions,setDeductions] = useState({});
 
   useEffect(()=>{
     loadData();
@@ -45,8 +44,7 @@ export default function App(){
 
   const loadData = async ()=>{
     const q = await getDocs(collection(db,"scores"));
-    const d = q.docs.map(doc=>doc.data());
-    setData(d);
+    setData(q.docs.map(doc=>doc.data()));
   };
 
   // OFFLINE SAVE
@@ -73,30 +71,35 @@ export default function App(){
     localStorage.removeItem("offlineScores");
   };
 
-  // SAFE FUNCTION (FIXED)
   const setScore = (cat,val)=>{
-    setScores(function(prev){
-      return {
-        ...prev,
-        [cat]: val
-      };
-    });
+    setScores(prev => ({
+      ...prev,
+      [cat]: val
+    }));
   };
 
   const submit = async ()=>{
-    const total = Object.values(scores).reduce(function(a,b){ return a+b; },0);
+    if(Object.keys(scores).length === 0){
+      alert("Add scores first");
+      return;
+    }
+
+    const total = Object.values(scores).reduce((a,b)=>a+b,0);
 
     const payload = {
-      judge: judge,
-      car: car,
-      driver: driver,
-      rego: rego,
-      carName: carName,
-      gender: gender,
-      carClass: carClass,
+      judge,
+      car,
+      driver,
+      rego,
+      carName,
+      gender,
+      carClass,
       finalScore: total,
       time: Date.now()
     };
+
+    // 🔥 FIX: instant UI update
+    setData(prev => [...prev, payload]);
 
     saveOffline(payload);
 
@@ -124,7 +127,7 @@ export default function App(){
   const combineScores = ()=>{
     const combined = {};
 
-    data.forEach(function(entry){
+    data.forEach(entry=>{
       const key =
         entry.car ||
         entry.rego ||
@@ -158,26 +161,23 @@ export default function App(){
       return;
     }
 
-    const sorted = combined.sort(function(a,b){
-      return b.total - a.total;
-    });
+    setTop150(
+      combined.sort((a,b)=>b.total-a.total).slice(0,150)
+    );
 
-    setTop150(sorted.slice(0,150));
     setScreen("top150");
   };
 
   const grouped = {};
-  combineScores().forEach(function(e){
+  combineScores().forEach(e=>{
     const key = (e.carClass || "Unknown") + " - " + (e.gender || "Unknown");
 
     if(!grouped[key]) grouped[key]=[];
     grouped[key].push(e);
   });
 
-  Object.keys(grouped).forEach(function(k){
-    grouped[k].sort(function(a,b){
-      return b.total - a.total;
-    });
+  Object.keys(grouped).forEach(k=>{
+    grouped[k].sort((a,b)=>b.total-a.total);
   });
 
   // SCREENS
@@ -187,25 +187,21 @@ export default function App(){
       <div style={{padding:20}}>
         <h2>Select Judge</h2>
 
-        {[1,2,3,4,5,6].map(function(j){
-          return (
-            <div key={j}>
-              <input
-                style={input}
-                value={judgeNames[j]}
-                onChange={function(e){
-                  setJudgeNames({...judgeNames,[j]:e.target.value});
-                }}
-              />
-              <button style={btnBig} onClick={function(){
-                setJudge(j);
-                setScreen("judge");
-              }}>
-                {judgeNames[j]}
-              </button>
-            </div>
-          );
-        })}
+        {[1,2,3,4,5,6].map(j=>(
+          <div key={j}>
+            <input
+              style={input}
+              value={judgeNames[j]}
+              onChange={(e)=>setJudgeNames({...judgeNames,[j]:e.target.value})}
+            />
+            <button style={btnBig} onClick={()=>{
+              setJudge(j);
+              setScreen("judge");
+            }}>
+              {judgeNames[j]}
+            </button>
+          </div>
+        ))}
       </div>
     );
   }
@@ -215,24 +211,17 @@ export default function App(){
       <div style={{padding:20}}>
         <h2>TOP 150</h2>
 
-        {top150.map(function(e,i){
-          return (
-            <div key={i} style={row}>
-              #{i+1} |
-              {e.car && " Car No: " + e.car + " |"}
-              {e.driver && " Driver: " + e.driver + " |"}
-              {e.rego && " Rego: " + e.rego + " |"}
-              {e.carName && " Car: " + e.carName + " |"}
-              Score: {e.total}
-            </div>
-          );
-        })}
+        {top150.map((e,i)=>(
+          <div key={i} style={row}>
+            #{i+1} | {e.car || e.driver} | {e.total}
+          </div>
+        ))}
 
-        <button style={btnBig} onClick={function(){setScreen("leaderboard");}}>
+        <button style={btnBig} onClick={()=>setScreen("leaderboard")}>
           Leaderboard
         </button>
 
-        <button style={btnBig} onClick={function(){setScreen("judge");}}>
+        <button style={btnBig} onClick={()=>setScreen("judge")}>
           Back
         </button>
       </div>
@@ -244,28 +233,19 @@ export default function App(){
       <div style={{padding:20}}>
         <h2>Leaderboard</h2>
 
-        {Object.keys(grouped).map(function(group){
-          return (
-            <div key={group}>
-              <h3 style={header}>{group}</h3>
+        {Object.keys(grouped).map(group=>(
+          <div key={group}>
+            <h3 style={header}>{group}</h3>
 
-              {grouped[group].map(function(e,i){
-                return (
-                  <div key={i} style={row}>
-                    #{i+1} |
-                    {e.car && " Car No: " + e.car + " |"}
-                    {e.driver && " Driver: " + e.driver + " |"}
-                    {e.rego && " Rego: " + e.rego + " |"}
-                    {e.carName && " Car: " + e.carName + " |"}
-                    Score: {e.total}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
+            {grouped[group].map((e,i)=>(
+              <div key={i} style={row}>
+                #{i+1} | {e.car || e.driver} | {e.total}
+              </div>
+            ))}
+          </div>
+        ))}
 
-        <button style={btnBig} onClick={function(){setScreen("judge");}}>
+        <button style={btnBig} onClick={()=>setScreen("judge")}>
           Back
         </button>
       </div>
@@ -277,31 +257,46 @@ export default function App(){
 
       <h2>{judgeNames[judge]}</h2>
 
-      <input style={input} placeholder="Car #" value={car} onChange={function(e){setCar(e.target.value);}}/>
-      <input style={input} placeholder="Driver" value={driver} onChange={function(e){setDriver(e.target.value);}}/>
-      <input style={input} placeholder="Rego" value={rego} onChange={function(e){setRego(e.target.value);}}/>
-      <input style={input} placeholder="Car Name" value={carName} onChange={function(e){setCarName(e.target.value);}}/>
+      <input style={input} placeholder="Car #" value={car} onChange={(e)=>setCar(e.target.value)}/>
+      <input style={input} placeholder="Driver" value={driver} onChange={(e)=>setDriver(e.target.value)}/>
+      <input style={input} placeholder="Rego" value={rego} onChange={(e)=>setRego(e.target.value)}/>
+      <input style={input} placeholder="Car Name" value={carName} onChange={(e)=>setCarName(e.target.value)}/>
 
-      {categories.map(function(cat){
-        return (
-          <div key={cat} style={{marginTop:20}}>
-            <strong>{cat}</strong>
-            <div>
-              {Array.from({length:21},(_,i)=>(
-                <button key={i}
-                  onClick={function(){setScore(cat,i);}}
-                  style={scores[cat]===i?btnRed:btn}>
-                  {i}
-                </button>
-              ))}
-            </div>
+      {/* GENDER */}
+      <div style={{marginTop:20}}>
+        <button style={gender==="Male"?btnGreen:btn} onClick={()=>setGender("Male")}>Male</button>
+        <button style={gender==="Female"?btnGreen:btn} onClick={()=>setGender("Female")}>Female</button>
+      </div>
+
+      {/* CLASS */}
+      <div style={{marginTop:20}}>
+        {classes.map(c=>(
+          <button key={c}
+            onClick={()=>setCarClass(c)}
+            style={carClass===c?btnBlue:btn}>
+            {c}
+          </button>
+        ))}
+      </div>
+
+      {categories.map(cat=>(
+        <div key={cat} style={{marginTop:20}}>
+          <strong>{cat}</strong>
+          <div>
+            {Array.from({length:21},(_,i)=>(
+              <button key={i}
+                onClick={()=>setScore(cat,i)}
+                style={scores[cat]===i?btnRed:btn}>
+                {i}
+              </button>
+            ))}
           </div>
-        );
-      })}
+        </div>
+      ))}
 
       <button style={btnBig} onClick={submit}>Submit</button>
       <button style={btnBig} onClick={buildTop150}>Top 150</button>
-      <button style={btnBig} onClick={function(){setScreen("leaderboard");}}>Leaderboard</button>
+      <button style={btnBig} onClick={()=>setScreen("leaderboard")}>Leaderboard</button>
 
     </div>
   );
@@ -313,4 +308,6 @@ const row = {padding:"14px",marginBottom:"10px",background:"#eee",borderRadius:6
 const header = {background:"#000",color:"#fff",padding:"10px"};
 const btn = {padding:"14px",margin:"6px"};
 const btnRed = {...btn,background:"red",color:"#fff"};
+const btnBlue = {...btn,background:"blue",color:"#fff"};
+const btnGreen = {...btn,background:"green",color:"#fff"};
 const btnBig = {padding:"18px",margin:"12px",background:"#000",color:"#fff"};
