@@ -11,10 +11,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const categories = [
-  "Smoke","Commitment","Style","Control","Entertainment"
-];
-
+const categories = ["Smoke","Commitment","Style","Control","Entertainment"];
 const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","Rotary"];
 const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
 
@@ -34,10 +31,12 @@ export default function App(){
 
   const [top150,setTop150] = useState([]);
   const [screen,setScreen] = useState("judge");
+  const [loading,setLoading] = useState(false);
 
   const setScore = (cat,val)=> setScores(prev=>({...prev,[cat]:val}));
   const toggleDeduction = d => setDeductions(prev=>({...prev,[d]:!prev[d]}));
 
+  // 🔥 FAST + SAFE SUBMIT
   const submit = async ()=>{
     if(saving) return;
 
@@ -63,46 +62,72 @@ export default function App(){
           car, driver, rego, carName,
           gender, carClass,
           scores,
-          finalScore
+          finalScore,
+          created: Date.now()
         }),
         new Promise((_,reject)=>setTimeout(()=>reject(),3000))
       ]);
     } catch {}
 
-    // reset
+    // reset form
     setScores({});
     setDeductions({});
-    setCar(""); setDriver(""); setRego(""); setCarName("");
-    setGender(""); setCarClass("");
+    setCar("");
+    setDriver("");
+    setRego("");
+    setCarName("");
+    setGender("");
+    setCarClass("");
 
     setSaving(false);
   };
 
+  // 🔥 FAST TOP150 WITH LOADING
   const buildTop150 = async ()=>{
-    const q = await getDocs(collection(db,"scores"));
-    const data = q.docs.map(d=>d.data());
-
-    setTop150(data.sort((a,b)=>b.finalScore-a.finalScore).slice(0,150));
+    setLoading(true);
     setScreen("top150");
+
+    try {
+      const q = await getDocs(collection(db,"scores"));
+      const data = q.docs.map(d=>d.data());
+
+      const sorted = data
+        .sort((a,b)=>b.finalScore-a.finalScore)
+        .slice(0,150);
+
+      setTop150(sorted);
+
+    } catch {
+      alert("Error loading scores");
+    }
+
+    setLoading(false);
   };
 
+  // 🔥 TOP150 SCREEN
   if(screen==="top150"){
     return (
       <div style={{padding:20}}>
         <h2>🏁 TOP 150</h2>
 
-        {top150.map((e,i)=>(
+        {loading && <h3>Loading...</h3>}
+
+        {!loading && top150.map((e,i)=>(
           <div key={i} style={{
             padding:15,
-            marginBottom:10,
+            marginBottom:12,
             background:"#eee",
-            borderRadius:6
+            borderRadius:6,
+            fontSize:"18px",
+            fontWeight:"bold"
           }}>
-            #{i+1} {e.driver || e.car} - {e.finalScore}
+            #{i+1} | Car No: {e.car || "-"} | Total Score: {e.finalScore || 0}
           </div>
         ))}
 
-        <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
+        <button style={btnBig} onClick={()=>setScreen("judge")}>
+          Back
+        </button>
       </div>
     );
   }
@@ -138,7 +163,6 @@ export default function App(){
       {categories.map(cat=>(
         <div key={cat} style={scoreBlock}>
           <strong>{cat}</strong>
-
           <div>
             {Array.from({length:21},(_,i)=>(
               <button key={i}
@@ -176,15 +200,9 @@ export default function App(){
 }
 
 // 🔥 STYLES
-const section = {
-  marginTop:25,
-  marginBottom:30
-};
+const section = { marginTop:25, marginBottom:30 };
 
-const scoreBlock = {
-  marginTop:30,
-  marginBottom:40
-};
+const scoreBlock = { marginTop:30, marginBottom:40 };
 
 const input = {
   display:"block",
@@ -201,23 +219,9 @@ const btn = {
   minWidth:"50px"
 };
 
-const btnRed = {
-  ...btn,
-  background:"red",
-  color:"#fff"
-};
-
-const btnBlue = {
-  ...btn,
-  background:"blue",
-  color:"#fff"
-};
-
-const btnGreen = {
-  ...btn,
-  background:"green",
-  color:"#fff"
-};
+const btnRed = { ...btn, background:"red", color:"#fff" };
+const btnBlue = { ...btn, background:"blue", color:"#fff" };
+const btnGreen = { ...btn, background:"green", color:"#fff" };
 
 const btnBig = {
   padding:"18px",
