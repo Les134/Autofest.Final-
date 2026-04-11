@@ -47,7 +47,7 @@ export default function App() {
   const [scores, setScores] = useState({});
   const [deductions, setDeductions] = useState({});
   const [allData, setAllData] = useState([]);
-  const [finalists, setFinalists] = useState([]);
+  const [top30, setTop30] = useState([]);
   const [locked, setLocked] = useState(false);
 
   const setScore = (cat,val)=> setScores({...scores,[cat]:val});
@@ -57,43 +57,51 @@ export default function App() {
     if(locked) return alert("Already submitted");
 
     if(!car && !driver && !rego && !carName){
-      return alert("Enter at least ONE: Car, Driver, Rego or Car Name");
+      return alert("Enter at least ONE competitor detail");
     }
 
     if(!gender || !carClass){
       return alert("Select gender and class");
     }
 
-    if(!window.confirm("Submit score?")) return;
-
     const totalScore = Object.values(scores).reduce((a,b)=>a+b,0);
     const totalDeductions = Object.values(deductions).filter(v=>v).length*10;
     const finalScore = totalScore - totalDeductions;
 
     await addDoc(collection(db,"scores"),{
-      judge: judgeName,
       car, driver, rego, carName, gender, carClass,
-      scores, deductions, totalScore, totalDeductions, finalScore,
-      time:new Date()
+      finalScore
     });
 
-    alert("Submitted");
+    alert("Saved");
     setLocked(true);
   };
 
+  // BUILD TOP 30
   const buildTop30 = async ()=>{
     const q = await getDocs(collection(db,"scores"));
     const data = q.docs.map(d=>d.data());
 
     const sorted = data.sort((a,b)=>b.finalScore-a.finalScore).slice(0,30);
 
-    setAllData(sorted);
+    setTop30(sorted);
     setScreen("top30");
   };
 
-  const startFinals = ()=>{
-    setFinalists(allData);
-    setScreen("finals");
+  // CALCULATE WINNERS PER CLASS
+  const getWinners = ()=>{
+    const results = {};
+
+    classes.forEach(cls=>{
+      const filtered = top30
+        .filter(e=>e.carClass===cls)
+        .sort((a,b)=>b.finalScore-a.finalScore)
+        .slice(0,3);
+
+      results[cls] = filtered;
+    });
+
+    return results;
   };
 
   // HOME
@@ -106,7 +114,7 @@ export default function App() {
     );
   }
 
-  // JUDGE SELECT
+  // JUDGES
   if(screen==="judgeSelect"){
     return (
       <div style={{textAlign:"center",padding:40}}>
@@ -123,25 +131,32 @@ export default function App() {
   if(screen==="top30"){
     return (
       <div style={{padding:20}}>
-        <h2>🏆 TOP 30</h2>
-        {allData.map((e,i)=>(
-          <div key={i} style={{marginBottom:10}}>
-            #{i+1} {e.driver || e.car} - {e.finalScore}
-          </div>
+        <h2>🏆 TOP 30 QUALIFIERS</h2>
+        {top30.map((e,i)=>(
+          <div key={i}>#{i+1} {e.driver || e.car} - {e.finalScore}</div>
         ))}
-        <button style={btnBig} onClick={startFinals}>Start Finals</button>
+        <button style={btnBig} onClick={()=>setScreen("results")}>
+          Show Winners
+        </button>
       </div>
     );
   }
 
-  // FINALS
-  if(screen==="finals"){
+  // RESULTS
+  if(screen==="results"){
+    const winners = getWinners();
+
     return (
       <div style={{padding:20}}>
-        <h1>🔥 FINALS</h1>
-        {finalists.map((e,i)=>(
-          <div key={i} style={{marginBottom:10}}>
-            #{i+1} {e.driver || e.car}
+        <h1>🏆 FINAL RESULTS</h1>
+
+        {classes.map(cls=>(
+          <div key={cls} style={{marginBottom:30}}>
+            <h2>{cls}</h2>
+
+            <div>🥇 {winners[cls][0]?.driver || "-"}</div>
+            <div>🥈 {winners[cls][1]?.driver || "-"}</div>
+            <div>🥉 {winners[cls][2]?.driver || "-"}</div>
           </div>
         ))}
       </div>
@@ -162,13 +177,11 @@ export default function App() {
       <input placeholder="Rego" value={rego} onChange={e=>setRego(e.target.value)} style={input}/>
       <input placeholder="Car Name" value={carName} onChange={e=>setCarName(e.target.value)} style={input}/>
 
-      {/* Gender */}
       <div style={section}>
-        <button style={{...btnSelect, background: gender==="Male"?"#00aa00":"#fff", color: gender==="Male"?"#fff":"#000"}} onClick={()=>setGender("Male")}>Male</button>
-        <button style={{...btnSelect, background: gender==="Female"?"#00aa00":"#fff", color: gender==="Female"?"#fff":"#000"}} onClick={()=>setGender("Female")}>Female</button>
+        <button style={{...btnSelect, background: gender==="Male"?"#00aa00":"#fff"}} onClick={()=>setGender("Male")}>Male</button>
+        <button style={{...btnSelect, background: gender==="Female"?"#00aa00":"#fff"}} onClick={()=>setGender("Female")}>Female</button>
       </div>
 
-      {/* Classes */}
       <div style={section}>
         {classes.map(c=>(
           <button key={c} onClick={()=>setCarClass(c)}
@@ -182,11 +195,10 @@ export default function App() {
         ))}
       </div>
 
-      {/* Scores */}
       {categories.map(cat=>(
-        <div key={cat.name} style={{marginBottom:30}}>
+        <div key={cat.name} style={{marginBottom:25}}>
           <strong>{cat.name}</strong>
-          <div style={{marginTop:10}}>
+          <div>
             {Array.from({length:cat.max+1},(_,i)=>(
               <button key={i}
                 onClick={()=>setScore(cat.name,i)}
@@ -204,27 +216,23 @@ export default function App() {
         </div>
       ))}
 
-      {/* Deductions */}
       <div style={section}>
         {deductionsList.map(d=>(
           <button key={d}
             onClick={()=>toggleDeduction(d)}
             style={{
               ...btnSelect,
-              background: deductions[d] ? "#ff0000" : "#fff",
-              color: deductions[d] ? "#fff" : "#000"
+              background: deductions[d] ? "#ff0000" : "#fff"
             }}>
             {d}
           </button>
         ))}
       </div>
 
-      <h2>Total: {totalScore}</h2>
-      <h2>Deductions: -{totalDeductions}</h2>
-      <h1>FINAL: {finalScore}</h1>
+      <h2>FINAL: {finalScore}</h2>
 
       <button style={btnBig} onClick={submit} disabled={locked}>Submit</button>
-      <button style={btnBig} onClick={buildTop30}>Top 30</button>
+      <button style={btnBig} onClick={buildTop30}>Build Top 30</button>
 
       <button style={btnBig} onClick={()=>{
         setScores({});
