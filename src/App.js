@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, getDocs } from "firebase/firestore";
 
@@ -42,7 +42,36 @@ export default function App(){
   const setScore = (cat,val)=> setScores(prev=>({...prev,[cat]:val}));
   const toggleDeduction = d => setDeductions(prev=>({...prev,[d]:!prev[d]}));
 
-  const submit = async ()=>{
+  // 💾 LOAD LOCAL BACKUP
+  const getQueue = () => JSON.parse(localStorage.getItem("offlineScores") || "[]");
+  const saveQueue = (q) => localStorage.setItem("offlineScores", JSON.stringify(q));
+
+  // 🔄 SYNC OFFLINE DATA
+  const syncOffline = async ()=>{
+    let queue = getQueue();
+    if(queue.length === 0) return;
+
+    const remaining = [];
+
+    for(const item of queue){
+      try {
+        await addDoc(collection(db,"scores"), item);
+      } catch {
+        remaining.push(item);
+      }
+    }
+
+    saveQueue(remaining);
+  };
+
+  // AUTO SYNC ON LOAD
+  useEffect(()=>{
+    syncOffline();
+    window.addEventListener("online", syncOffline);
+  },[]);
+
+  // 🔥 SUBMIT (OFFLINE SAFE)
+  const submit = ()=>{
     if(saving) return;
 
     if(!car && !driver && !rego && !carName){
@@ -55,31 +84,40 @@ export default function App(){
       return;
     }
 
-    setSaving(true);
-
     const total = Object.values(scores).reduce((a,b)=>a+b,0);
     const deductionsTotal = Object.values(deductions).filter(v=>v).length * 10;
     const finalScore = total - deductionsTotal;
 
-    try {
-      await addDoc(collection(db,"scores"),{
-        judge,
-        car, driver, rego, carName,
-        gender, carClass,
-        finalScore
-      });
-    } catch {}
+    const payload = {
+      judge,
+      car, driver, rego, carName,
+      gender, carClass,
+      finalScore,
+      created: Date.now()
+    };
 
-    // RESET
+    // 💾 SAVE TO LOCAL FIRST
+    const queue = getQueue();
+    queue.push(payload);
+    saveQueue(queue);
+
+    // RESET UI
     setScores({});
     setDeductions({});
     setCar(""); setDriver(""); setRego(""); setCarName("");
     setGender(""); setCarClass("");
 
-    setSaving(false);
+    // TRY SEND (NON-BLOCKING)
+    addDoc(collection(db,"scores"), payload)
+      .then(()=>{
+        const updated = getQueue().filter(q=>q.created !== payload.created);
+        saveQueue(updated);
+      })
+      .catch(()=>{});
   };
 
   const loadData = async ()=>{
+    await syncOffline();
     const q = await getDocs(collection(db,"scores"));
     const d = q.docs.map(doc=>doc.data());
     setData(d);
@@ -110,7 +148,6 @@ export default function App(){
 
   const printResults = ()=> window.print();
 
-  // JUDGE SELECT
   if(screen==="judgeSelect"){
     return (
       <div style={{padding:20}}>
@@ -118,11 +155,8 @@ export default function App(){
 
         {[1,2,3,4,5,6].map(j=>(
           <div key={j} style={{marginBottom:15}}>
-            <input
-              style={input}
-              value={judgeNames[j]}
-              onChange={e=>setJudgeNames({...judgeNames,[j]:e.target.value})}
-            />
+            <input style={input} value={judgeNames[j]}
+              onChange={e=>setJudgeNames({...judgeNames,[j]:e.target.value})}/>
             <button style={btnBig} onClick={()=>{setJudge(j);setScreen("judge");}}>
               {judgeNames[j]}
             </button>
@@ -132,7 +166,6 @@ export default function App(){
     );
   }
 
-  // LEADERBOARD
   if(screen==="leaderboard"){
     return (
       <div style={{padding:20}}>
@@ -140,7 +173,6 @@ export default function App(){
 
         {Object.keys(grouped).map(group=>(
           <div key={group} style={{marginBottom:30}}>
-
             <h3 style={header}>{group}</h3>
 
             {grouped[group].map((e,i)=>(
@@ -157,7 +189,6 @@ export default function App(){
     );
   }
 
-  // TOP 30
   if(screen==="top30"){
     return (
       <div style={{padding:20}}>
@@ -174,7 +205,6 @@ export default function App(){
     );
   }
 
-  // PODIUM
   if(screen==="podium"){
     return (
       <div style={{padding:20}}>
@@ -243,9 +273,7 @@ export default function App(){
         ))}
       </div>
 
-      <button style={btnBig} onClick={submit}>
-        {saving ? "Saving..." : "Submit"}
-      </button>
+      <button style={btnBig} onClick={submit}>Submit</button>
 
       <button style={btnBig} onClick={()=>{loadData();setScreen("leaderboard");}}>
         View Leaderboard
@@ -255,7 +283,7 @@ export default function App(){
   );
 }
 
-// STYLES
+// styles
 const section = { marginTop:25, marginBottom:30 };
 const scoreBlock = { marginTop:30, marginBottom:40 };
 
