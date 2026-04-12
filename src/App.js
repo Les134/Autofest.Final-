@@ -11,7 +11,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 🔥 UPDATED CATEGORIES
 const categories = [
   "Instant Smoke",
   "Volume of Smoke",
@@ -25,13 +24,17 @@ const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
 
 export default function App(){
 
-  const [screen,setScreen] = useState("judgeSelect");
+  const [screen,setScreen] = useState("setup");
+
+  const [eventName,setEventName] = useState("");
   const [judge,setJudge] = useState("");
 
   const [judgeNames,setJudgeNames] = useState({
     1:"Judge 1",2:"Judge 2",3:"Judge 3",
     4:"Judge 4",5:"Judge 5",6:"Judge 6"
   });
+
+  const [locked,setLocked] = useState(false);
 
   const [data,setData] = useState([]);
   const [top150,setTop150] = useState([]);
@@ -49,232 +52,183 @@ export default function App(){
 
   useEffect(function(){
     loadData();
+
+    // 🔥 restore session
+    var savedJudge = localStorage.getItem("judge");
+    if(savedJudge){
+      setJudge(savedJudge);
+      setLocked(true);
+      setScreen("judge");
+    }
   },[]);
 
   function loadData(){
     getDocs(collection(db,"scores")).then(function(q){
-      var d = q.docs.map(function(doc){ return doc.data(); });
-      setData(d);
+      setData(q.docs.map(function(doc){ return doc.data(); }));
     });
   }
 
+  function startEvent(){
+    if(!eventName){
+      alert("Enter Event Name");
+      return;
+    }
+    setScreen("judgeSelect");
+  }
+
+  function selectJudge(j){
+    setJudge(j);
+    setLocked(true);
+    localStorage.setItem("judge", j);
+    setScreen("judge");
+  }
+
   function setScore(cat,val){
-    setScores(function(prev){
-      var updated = Object.assign({}, prev);
-      updated[cat] = val;
-      return updated;
+    setScores(prev=>{
+      var u = Object.assign({}, prev);
+      u[cat] = val;
+      return u;
     });
   }
 
   function toggleDeduction(d){
-    setDeductions(function(prev){
-      var updated = Object.assign({}, prev);
-      updated[d] = !updated[d];
-      return updated;
+    setDeductions(prev=>{
+      var u = Object.assign({}, prev);
+      u[d] = !u[d];
+      return u;
     });
   }
 
   function submit(){
 
-    if(Object.keys(scores).length === 0){
-      alert("Add scores first");
-      return;
-    }
-
-    var total = Object.values(scores).reduce(function(a,b){ return a+b; },0);
-
-    var deductionCount = Object.values(deductions).filter(function(v){ return v; }).length;
-    var finalScore = total - (deductionCount * 10);
+    var total = Object.values(scores).reduce((a,b)=>a+b,0);
+    var deductionsTotal = Object.values(deductions).filter(v=>v).length * 10;
+    var finalScore = total - deductionsTotal;
 
     var payload = {
-      judge: judge,
-      car: car,
-      driver: driver,
-      rego: rego,
-      carName: carName,
-      gender: gender,
-      carClass: carClass,
-      finalScore: finalScore
+      eventName,
+      judge,
+      car,
+      driver,
+      rego,
+      carName,
+      gender,
+      carClass,
+      finalScore
     };
 
-    setData(function(prev){
-      return prev.concat([payload]);
-    });
+    setData(prev=>prev.concat([payload]));
 
-    addDoc(collection(db,"scores"), payload).catch(function(){
-      console.log("save failed");
-    });
+    addDoc(collection(db,"scores"), payload).catch(()=>{});
 
     setScores({});
     setDeductions({});
-    setCar("");
-    setDriver("");
-    setRego("");
-    setCarName("");
-    setGender("");
-    setCarClass("");
+    setCar(""); setDriver(""); setRego(""); setCarName("");
+    setGender(""); setCarClass("");
   }
 
   function combineScores(){
     var combined = {};
-
-    data.forEach(function(entry){
-
-      var key = entry.car || entry.rego || "Unknown";
-
+    data.forEach(e=>{
+      var key = e.car || e.rego || "Unknown";
       if(!combined[key]){
-        combined[key] = {
-          car: entry.car,
-          driver: entry.driver,
-          carClass: entry.carClass,
-          gender: entry.gender,
-          total: 0
-        };
+        combined[key]={car:e.car,carClass:e.carClass,gender:e.gender,total:0};
       }
-
-      combined[key].total += entry.finalScore;
+      combined[key].total += e.finalScore;
     });
-
     return Object.values(combined);
   }
 
   function buildTop150(){
-    var sorted = combineScores()
-      .sort(function(a,b){ return b.total - a.total; })
-      .slice(0,150);
-
-    setTop150(sorted);
+    setTop150(combineScores().sort((a,b)=>b.total-a.total).slice(0,150));
     setScreen("top150");
   }
 
-  var grouped = {};
-  combineScores().forEach(function(e){
-    var key = (e.carClass || "Unknown") + " - " + (e.gender || "Unknown");
+  // -------- SCREENS --------
 
-    if(!grouped[key]) grouped[key] = [];
-    grouped[key].push(e);
-  });
+  if(screen==="setup"){
+    return (
+      <div style={{padding:20}}>
+        <h1>🏁 Event Setup</h1>
 
-  Object.keys(grouped).forEach(function(k){
-    grouped[k].sort(function(a,b){
-      return b.total - a.total;
-    });
-  });
+        <input
+          style={input}
+          placeholder="Event Name"
+          value={eventName}
+          onChange={e=>setEventName(e.target.value)}
+        />
 
-  // SCREENS
+        <h3>Judges</h3>
+        {[1,2,3,4,5,6].map(j=>(
+          <input key={j}
+            style={input}
+            value={judgeNames[j]}
+            onChange={e=>setJudgeNames({...judgeNames,[j]:e.target.value})}
+          />
+        ))}
 
-  if(screen === "judgeSelect"){
+        <button style={btnBig} onClick={startEvent}>
+          Start Event
+        </button>
+      </div>
+    );
+  }
+
+  if(screen==="judgeSelect" && !locked){
     return (
       <div style={{padding:20}}>
         <h2>Select Judge</h2>
-
-        {[1,2,3,4,5,6].map(function(j){
-          return (
-            <div key={j} style={{marginBottom:15}}>
-              <input
-                style={input}
-                value={judgeNames[j]}
-                onChange={function(e){
-                  var updated = Object.assign({}, judgeNames);
-                  updated[j] = e.target.value;
-                  setJudgeNames(updated);
-                }}
-              />
-
-              <button style={btnBig} onClick={function(){
-                setJudge(j);
-                setScreen("judge");
-              }}>
-                {judgeNames[j]}
-              </button>
-            </div>
-          );
-        })}
+        {[1,2,3,4,5,6].map(j=>(
+          <button key={j} style={btnBig} onClick={()=>selectJudge(j)}>
+            {judgeNames[j]}
+          </button>
+        ))}
       </div>
     );
   }
 
-  if(screen === "top150"){
+  if(screen==="top150"){
     return (
       <div style={{padding:20}}>
-        <h2>TOP 150</h2>
-
-        {top150.map(function(e,i){
-          return (
-            <div key={i} style={row}>
-              #{i+1} | Car No: {e.car} | Score: {e.total}
-            </div>
-          );
-        })}
-
-        <button style={btnBig} onClick={function(){setScreen("leaderboard");}}>
-          Leaderboard
-        </button>
-
-        <button style={btnBig} onClick={function(){setScreen("judge");}}>
-          Back
-        </button>
+        <h2>{eventName} - Top 150</h2>
+        {top150.map((e,i)=>(
+          <div key={i} style={row}>
+            #{i+1} | {e.car} | {e.total}
+          </div>
+        ))}
+        <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
       </div>
     );
   }
 
-  if(screen === "leaderboard"){
-    return (
-      <div style={{padding:20}}>
-        <h2>Leaderboard</h2>
-
-        {Object.keys(grouped).map(function(group){
-          return (
-            <div key={group}>
-              <h3 style={header}>{group}</h3>
-
-              {grouped[group].map(function(e,i){
-                return (
-                  <div key={i} style={row}>
-                    #{i+1} | Car No: {e.car} | Score: {e.total}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
-
-        <button style={btnBig} onClick={function(){setScreen("judge");}}>
-          Back
-        </button>
-      </div>
-    );
-  }
+  // -------- MAIN JUDGE SCREEN --------
 
   return (
     <div style={{padding:20}}>
 
-      <h2>{judgeNames[judge]}</h2>
+      <h2>{eventName}</h2>
+      <h3>{judgeNames[judge]}</h3>
 
-      <input style={input} placeholder="Car #" value={car} onChange={function(e){setCar(e.target.value);}}/>
-      <input style={input} placeholder="Driver" value={driver} onChange={function(e){setDriver(e.target.value);}}/>
-      <input style={input} placeholder="Rego" value={rego} onChange={function(e){setRego(e.target.value);}}/>
-      <input style={input} placeholder="Car Name" value={carName} onChange={function(e){setCarName(e.target.value);}}/>
+      <input style={input} placeholder="Car #" value={car} onChange={e=>setCar(e.target.value)}/>
+      <input style={input} placeholder="Driver" value={driver} onChange={e=>setDriver(e.target.value)}/>
 
-      <div style={section}>
-        <button style={gender==="Male"?btnGreen:btn} onClick={function(){setGender("Male");}}>Male</button>
-        <button style={gender==="Female"?btnGreen:btn} onClick={function(){setGender("Female");}}>Female</button>
+      <div>
+        <button style={gender==="Male"?btnGreen:btn} onClick={()=>setGender("Male")}>Male</button>
+        <button style={gender==="Female"?btnGreen:btn} onClick={()=>setGender("Female")}>Female</button>
       </div>
 
-      <div style={section}>
-        {classes.map(function(c){
-          return (
-            <button key={c}
-              onClick={function(){setCarClass(c);}}
-              style={carClass===c?btnBlue:btn}>
-              {c}
-            </button>
-          );
-        })}
+      <div>
+        {classes.map(c=>(
+          <button key={c}
+            onClick={()=>setCarClass(c)}
+            style={carClass===c?btnBlue:btn}>
+            {c}
+          </button>
+        ))}
       </div>
 
-      {categories.map(function(cat){
-        var max = cat === "Blown Tyres" ? 5 : 20;
+      {categories.map(cat=>{
+        var max = cat==="Blown Tyres"?5:20;
 
         return (
           <div key={cat} style={scoreBlock}>
@@ -282,7 +236,7 @@ export default function App(){
             <div>
               {Array.from({length:max+1},(_,i)=>(
                 <button key={i}
-                  onClick={function(){setScore(cat,i);}}
+                  onClick={()=>setScore(cat,i)}
                   style={scores[cat]===i?btnRed:btn}>
                   {i}
                 </button>
@@ -292,36 +246,30 @@ export default function App(){
         );
       })}
 
-      <div style={section}>
+      <div>
         <strong>Deductions</strong><br/>
-        {deductionsList.map(function(d){
-          return (
-            <button key={d}
-              onClick={function(){toggleDeduction(d);}}
-              style={deductions[d]?btnRed:btn}>
-              {d}
-            </button>
-          );
-        })}
+        {deductionsList.map(d=>(
+          <button key={d}
+            onClick={()=>toggleDeduction(d)}
+            style={deductions[d]?btnRed:btn}>
+            {d}
+          </button>
+        ))}
       </div>
 
       <button style={btnBig} onClick={submit}>Submit</button>
       <button style={btnBig} onClick={buildTop150}>Top 150</button>
-      <button style={btnBig} onClick={function(){setScreen("leaderboard");}}>Leaderboard</button>
 
     </div>
   );
 }
 
 // styles
-const section = { marginTop:25, marginBottom:30 };
-const scoreBlock = { marginTop:30, marginBottom:40 };
 const input = {display:"block",width:"100%",padding:"14px",marginBottom:"12px"};
-const row = {padding:"14px",marginBottom:"10px",background:"#eee",borderRadius:6};
-const header = {background:"#000",color:"#fff",padding:"10px"};
+const scoreBlock = {marginTop:25,marginBottom:30};
+const row = {padding:"14px",marginBottom:"10px",background:"#eee"};
 const btn = {padding:"14px",margin:"6px"};
 const btnRed = {...btn,background:"red",color:"#fff"};
 const btnBlue = {...btn,background:"blue",color:"#fff"};
 const btnGreen = {...btn,background:"green",color:"#fff"};
 const btnBig = {padding:"18px",margin:"12px",background:"#000",color:"#fff"};
-
