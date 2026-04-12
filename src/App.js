@@ -79,7 +79,7 @@ export default function App(){
   }
 
   function setScore(cat,val){
-    setScores(prev=>{
+    setScores(function(prev){
       var u = Object.assign({}, prev);
       u[cat] = val;
       return u;
@@ -87,7 +87,7 @@ export default function App(){
   }
 
   function toggleDeduction(d){
-    setDeductions(prev=>{
+    setDeductions(function(prev){
       var u = Object.assign({}, prev);
       u[d] = !u[d];
       return u;
@@ -96,16 +96,16 @@ export default function App(){
 
   function submit(){
 
-    var total = Object.values(scores).reduce((a,b)=>a+b,0);
+    var total = Object.values(scores).reduce(function(a,b){ return a+b; },0);
 
-    // 🔥 tyre scoring
     var tyreScore = (tyres.left?5:0) + (tyres.right?5:0);
-
-    var deductionTotal = Object.values(deductions).filter(v=>v).length * 10;
+    var deductionTotal = Object.values(deductions).filter(function(v){ return v; }).length * 10;
 
     var finalScore = total + tyreScore - deductionTotal;
 
+    // 🔥 UNIQUE ID FIX
     var payload = {
+      id: Date.now(),
       eventName,
       judge,
       car,
@@ -117,8 +117,11 @@ export default function App(){
       finalScore
     };
 
-    setData(prev=>prev.concat([payload]));
-    addDoc(collection(db,"scores"), payload).catch(()=>{});
+    setData(function(prev){
+      return prev.concat([payload]);
+    });
+
+    addDoc(collection(db,"scores"), payload).catch(function(){});
 
     // reset
     setScores({});
@@ -130,8 +133,11 @@ export default function App(){
 
   function combineScores(){
     var combined = {};
-    data.forEach(e=>{
-      var key = e.car || e.rego || "Unknown";
+
+    data.forEach(function(e){
+
+      // 🔥 FIXED GROUPING KEY
+      var key = e.car || e.rego || e.driver || e.carName || e.id;
 
       if(!combined[key]){
         combined[key]={
@@ -152,19 +158,26 @@ export default function App(){
   }
 
   function buildTop150(){
-    setTop150(combineScores().sort((a,b)=>b.total-a.total).slice(0,150));
+    setTop150(
+      combineScores()
+      .sort(function(a,b){ return b.total-a.total; })
+      .slice(0,150)
+    );
     setScreen("top150");
   }
 
   var grouped = {};
-  combineScores().forEach(e=>{
+  combineScores().forEach(function(e){
     var key = (e.carClass||"Unknown")+" - "+(e.gender||"Unknown");
+
     if(!grouped[key]) grouped[key]=[];
     grouped[key].push(e);
   });
 
-  Object.keys(grouped).forEach(k=>{
-    grouped[k].sort((a,b)=>b.total-a.total);
+  Object.keys(grouped).forEach(function(k){
+    grouped[k].sort(function(a,b){
+      return b.total-a.total;
+    });
   });
 
   // -------- SCREENS --------
@@ -176,9 +189,15 @@ export default function App(){
 
         <input style={input} placeholder="Event Name" value={eventName} onChange={e=>setEventName(e.target.value)}/>
 
-        {[1,2,3,4,5,6].map(j=>(
-          <input key={j} style={input} value={judgeNames[j]} onChange={e=>setJudgeNames({...judgeNames,[j]:e.target.value})}/>
-        ))}
+        {[1,2,3,4,5,6].map(function(j){
+          return (
+            <input key={j} style={input} value={judgeNames[j]} onChange={function(e){
+              var u = Object.assign({}, judgeNames);
+              u[j] = e.target.value;
+              setJudgeNames(u);
+            }}/>
+          );
+        })}
 
         <button style={btnBig} onClick={startEvent}>Start Event</button>
       </div>
@@ -189,11 +208,14 @@ export default function App(){
     return (
       <div style={{padding:20}}>
         <h2>Select Judge</h2>
-        {[1,2,3,4,5,6].map(j=>(
-          <button key={j} style={btnBig} onClick={()=>selectJudge(j)}>
-            {judgeNames[j]}
-          </button>
-        ))}
+
+        {[1,2,3,4,5,6].map(function(j){
+          return (
+            <button key={j} style={btnBig} onClick={function(){selectJudge(j);}}>
+              {judgeNames[j]}
+            </button>
+          );
+        })}
       </div>
     );
   }
@@ -203,14 +225,16 @@ export default function App(){
       <div style={{padding:20}}>
         <h2>Top 150</h2>
 
-        {top150.map((e,i)=>(
-          <div key={i} style={row}>
-            #{i+1} | Car No: {e.car} | Driver: {e.driver} | Score: {e.total}
-          </div>
-        ))}
+        {top150.map(function(e,i){
+          return (
+            <div key={i} style={row}>
+              #{i+1} | Car No: {e.car} | Driver: {e.driver} | Score: {e.total}
+            </div>
+          );
+        })}
 
-        <button style={btnBig} onClick={()=>setScreen("leaderboard")}>Leaderboard</button>
-        <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
+        <button style={btnBig} onClick={function(){setScreen("leaderboard");}}>Leaderboard</button>
+        <button style={btnBig} onClick={function(){setScreen("judge");}}>Back</button>
       </div>
     );
   }
@@ -220,19 +244,23 @@ export default function App(){
       <div style={{padding:20}}>
         <h2>Leaderboard</h2>
 
-        {Object.keys(grouped).map(group=>(
-          <div key={group}>
-            <h3>{group}</h3>
+        {Object.keys(grouped).map(function(group){
+          return (
+            <div key={group}>
+              <h3>{group}</h3>
 
-            {grouped[group].map((e,i)=>(
-              <div key={i} style={row}>
-                #{i+1} | Car No: {e.car} | Driver: {e.driver} | Score: {e.total}
-              </div>
-            ))}
-          </div>
-        ))}
+              {grouped[group].map(function(e,i){
+                return (
+                  <div key={i} style={row}>
+                    #{i+1} | Car No: {e.car} | Driver: {e.driver} | Score: {e.total}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
 
-        <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
+        <button style={btnBig} onClick={function(){setScreen("judge");}}>Back</button>
       </div>
     );
   }
@@ -254,39 +282,41 @@ export default function App(){
       </div>
 
       <div>
-        {classes.map(c=>(
-          <button key={c} onClick={()=>setCarClass(c)} style={carClass===c?btnBlue:btn}>{c}</button>
-        ))}
+        {classes.map(function(c){
+          return (
+            <button key={c} onClick={()=>setCarClass(c)} style={carClass===c?btnBlue:btn}>{c}</button>
+          );
+        })}
       </div>
 
-      {categories.map(cat=>(
-        <div key={cat}>
-          <strong>{cat}</strong>
-          <div>
-            {Array.from({length:21},(_,i)=>(
-              <button key={i} onClick={()=>setScore(cat,i)} style={scores[cat]===i?btnRed:btn}>{i}</button>
-            ))}
+      {categories.map(function(cat){
+        return (
+          <div key={cat}>
+            <strong>{cat}</strong>
+            <div>
+              {Array.from({length:21},(_,i)=>(
+                <button key={i} onClick={()=>setScore(cat,i)} style={scores[cat]===i?btnRed:btn}>{i}</button>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {/* 🔥 BLOWN TYRES */}
       <div>
         <strong>Blown Tyres (5pts each)</strong><br/>
-        <button style={tyres.left?btnRed:btn} onClick={()=>setTyres({...tyres,left:!tyres.left})}>
-          Left Tyre
-        </button>
-        <button style={tyres.right?btnRed:btn} onClick={()=>setTyres({...tyres,right:!tyres.right})}>
-          Right Tyre
-        </button>
+        <button style={tyres.left?btnRed:btn} onClick={()=>setTyres({...tyres,left:!tyres.left})}>Left</button>
+        <button style={tyres.right?btnRed:btn} onClick={()=>setTyres({...tyres,right:!tyres.right})}>Right</button>
       </div>
 
       {/* DEDUCTIONS */}
       <div>
         <strong>Deductions</strong><br/>
-        {deductionsList.map(d=>(
-          <button key={d} onClick={()=>toggleDeduction(d)} style={deductions[d]?btnRed:btn}>{d}</button>
-        ))}
+        {deductionsList.map(function(d){
+          return (
+            <button key={d} onClick={()=>toggleDeduction(d)} style={deductions[d]?btnRed:btn}>{d}</button>
+          );
+        })}
       </div>
 
       <button style={btnBig} onClick={submit}>Submit</button>
