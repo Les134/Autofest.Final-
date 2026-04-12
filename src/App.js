@@ -1,4 +1,4 @@
-🔥 FULL CLEAN WORKING FILE (COPY ALL)
+
 import React, { useState } from "react";
 
 const categories = [
