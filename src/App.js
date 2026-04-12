@@ -1,5 +1,4 @@
-
-  import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, getDocs } from "firebase/firestore";
 
@@ -98,7 +97,6 @@ export default function App(){
       console.log("save failed");
     });
 
-    // reset
     setScores({});
     setDeductions({});
     setCar("");
@@ -267,7 +265,24 @@ export default function App(){
         })}
       </div>
 
-      {/* 🔥 DEDUCTIONS */}
+      {categories.map(function(cat){
+        return (
+          <div key={cat} style={scoreBlock}>
+            <strong>{cat}</strong>
+            <div>
+              {Array.from({length:21},(_,i)=>(
+                <button key={i}
+                  onClick={function(){setScore(cat,i);}}
+                  style={scores[cat]===i?btnRed:btn}>
+                  {i}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* 🔥 MOVED HERE */}
       <div style={section}>
         <strong>Deductions</strong><br/>
         {deductionsList.map(function(d){
@@ -280,23 +295,6 @@ export default function App(){
           );
         })}
       </div>
-
-      {categories.map(function(cat){
-        return (
-          <div key={cat} style={scoreBlock}>
-            <strong>{cat}</strong>
-            <div>
-              {Array.from({length:21},(_,i)=>(
-                <button key={i}
-                  onClick={function(){setScore(cat,i);}}
-                  style={scores[cat]===i?btnBlue:btn}>
-                  {i}
-                </button>
-              ))}
-            </div>
-          </div>
-        );
-      })}
 
       <button style={btnBig} onClick={submit}>Submit</button>
       <button style={btnBig} onClick={buildTop150}>Top 150</button>
@@ -316,21 +314,5 @@ const btn = {padding:"14px",margin:"6px"};
 const btnRed = {...btn,background:"red",color:"#fff"};
 const btnBlue = {...btn,background:"blue",color:"#fff"};
 const btnGreen = {...btn,background:"green",color:"#fff"};
-const btnBig = {padding:"18px",margin:"12px",background:"#000",color:"#fff"};          
-           
-          
-           
- 
-  
-           
-
-   
-
-
-      
-     
-    
-
-
-
+const btnBig = {padding:"18px",margin:"12px",background:"#000",color:"#fff"};
 
