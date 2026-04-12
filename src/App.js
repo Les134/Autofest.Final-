@@ -25,8 +25,12 @@ export default function App(){
 
   const [screen,setScreen] = useState("setup");
   const [eventName,setEventName] = useState("");
+
   const [judge,setJudge] = useState("");
   const [locked,setLocked] = useState(false);
+
+  const [adminMode,setAdminMode] = useState(false);
+  const [adminCode,setAdminCode] = useState("");
 
   const [judgeNames,setJudgeNames] = useState({
     1:"Judge 1",2:"Judge 2",3:"Judge 3",
@@ -52,6 +56,7 @@ export default function App(){
 
   useEffect(()=>{
     loadData();
+
     const savedJudge = localStorage.getItem("judge");
     if(savedJudge){
       setJudge(savedJudge);
@@ -178,12 +183,42 @@ export default function App(){
     win.print();
   }
 
-  // ---------- SCREENS ----------
+  // ADMIN LOGIN
+  if(screen==="adminLogin"){
+    return (
+      <div style={{padding:20}}>
+        <h2>Admin Login</h2>
+        <input style={input} value={adminCode} onChange={e=>setAdminCode(e.target.value)} placeholder="Code"/>
+        <button style={btnBig} onClick={()=>{
+          if(adminCode==="ADMIN123"){
+            setScreen("adminPanel");
+          } else alert("Wrong code");
+        }}>Login</button>
+      </div>
+    );
+  }
 
+  if(screen==="adminPanel"){
+    return (
+      <div style={{padding:20}}>
+        <h2>Admin Panel</h2>
+
+        <button style={btnBig} onClick={()=>{setData([]); alert("Scores cleared");}}>Clear Scores</button>
+
+        <button style={btnBig} onClick={()=>{localStorage.removeItem("judge"); setLocked(false); alert("Judges reset");}}>
+          Reset Judges
+        </button>
+
+        <button style={btnBig} onClick={()=>setScreen("setup")}>Back</button>
+      </div>
+    );
+  }
+
+  // SETUP
   if(screen==="setup"){
     return (
       <div style={{padding:20}}>
-        <h1>🏁 Event Setup</h1>
+        <h1>Event Setup</h1>
 
         <input style={input} placeholder="Event Name" value={eventName} onChange={e=>setEventName(e.target.value)}/>
 
@@ -192,6 +227,7 @@ export default function App(){
         ))}
 
         <button style={btnBig} onClick={startEvent}>Start Event</button>
+        <button style={btnBig} onClick={()=>setScreen("adminLogin")}>Admin</button>
       </div>
     );
   }
@@ -213,13 +249,11 @@ export default function App(){
     return (
       <div style={{padding:20}}>
         <h2>Top 150</h2>
-
         {top150.map((e,i)=>(
           <div key={i} style={row}>
             #{i+1} | Car: {e.car} | Driver: {e.driver} | Score: {e.total}
           </div>
         ))}
-
         <button style={btnBig} onClick={buildTop30}>Top 30 Finals</button>
         <button style={btnBig} onClick={()=>setScreen("leaderboard")}>Leaderboard</button>
         <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
@@ -230,14 +264,12 @@ export default function App(){
   if(screen==="top30"){
     return (
       <div style={{padding:20}}>
-        <h2>🏆 Top 30 Finals</h2>
-
+        <h2>Top 30 Finals</h2>
         {top30.map((e,i)=>(
           <div key={i} style={row}>
             #{i+1} | Car: {e.car} | Driver: {e.driver} | Score: {e.total}
           </div>
         ))}
-
         <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
       </div>
     );
@@ -258,12 +290,11 @@ export default function App(){
 
     return (
       <div style={{padding:20}}>
-        <h2>Leaderboard (By Class)</h2>
+        <h2>Leaderboard</h2>
 
         {Object.keys(grouped).map(group=>(
-          <div key={group} style={{marginBottom:30}}>
-            <h3 style={{background:"#000",color:"#fff",padding:10}}>{group}</h3>
-
+          <div key={group}>
+            <h3>{group}</h3>
             {grouped[group].map((e,i)=>(
               <div key={i} style={row}>
                 #{i+1} | Car: {e.car} | Driver: {e.driver} | Rego: {e.rego} | Car: {e.carName} | Score: {e.total}
@@ -272,7 +303,7 @@ export default function App(){
           </div>
         ))}
 
-        <button style={btnBig} onClick={printResults}>Print Results</button>
+        <button style={btnBig} onClick={printResults}>Print</button>
         <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
       </div>
     );
@@ -280,7 +311,6 @@ export default function App(){
 
   return (
     <div style={{padding:20}}>
-
       <h2>{eventName}</h2>
       <h3>{judgeNames[judge]}</h3>
 
@@ -312,7 +342,7 @@ export default function App(){
       ))}
 
       <div>
-        <strong>Blown Tyres (5pts each)</strong><br/>
+        <strong>Blown Tyres</strong><br/>
         <button style={tyres.left?btnRed:btn} onClick={()=>setTyres({...tyres,left:!tyres.left})}>Left</button>
         <button style={tyres.right?btnRed:btn} onClick={()=>setTyres({...tyres,right:!tyres.right})}>Right</button>
       </div>
@@ -327,12 +357,10 @@ export default function App(){
       <button style={btnBig} onClick={submit}>Submit</button>
       <button style={btnBig} onClick={buildTop150}>Top 150</button>
       <button style={btnBig} onClick={()=>setScreen("leaderboard")}>Leaderboard</button>
-
     </div>
   );
 }
 
-// styles
 const input = {display:"block",width:"100%",padding:"14px",marginBottom:"12px"};
 const row = {padding:"14px",marginBottom:"10px",background:"#eee"};
 const btn = {padding:"14px",margin:"6px"};
