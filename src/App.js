@@ -22,6 +22,8 @@ export default function App(){
   const [scores,setScores] = useState({});
   const [data,setData] = useState([]);
 
+  const [view,setView] = useState("judge");
+
   function setScore(cat,val){
     setScores({...scores,[cat]:val});
   }
@@ -47,13 +49,41 @@ export default function App(){
 
     setData([...data,entry]);
 
+    // CLEAR FORM
     setScores({});
-    setCar(""); setDriver(""); setRego(""); setCarName("");
-    setGender(""); setCarClass("");
+    setCar(""); 
+    setDriver(""); 
+    setRego(""); 
+    setCarName("");
+    setGender(""); 
+    setCarClass("");
   }
 
   function leaderboard(){
-    return data.sort((a,b)=>b.total-a.total);
+    return [...data].sort((a,b)=>b.total-a.total);
+  }
+
+  function top150(){
+    return leaderboard().slice(0,150);
+  }
+
+  // 🔥 TOP 150 SCREEN
+  if(view==="top150"){
+    return (
+      <div style={{padding:20}}>
+        <h2>🏁 Top 150</h2>
+
+        {top150().map((e,i)=>(
+          <div key={i} style={row}>
+            #{i+1} | Car No: {e.car} | {e.driver} | Total: {e.total}
+          </div>
+        ))}
+
+        <button style={btnBig} onClick={()=>setView("judge")}>
+          ⬅ Back
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -66,12 +96,14 @@ export default function App(){
       <input placeholder="Rego" value={rego} onChange={e=>setRego(e.target.value)} style={input}/>
       <input placeholder="Car Name" value={carName} onChange={e=>setCarName(e.target.value)} style={input}/>
 
-      <div>
+      {/* GENDER */}
+      <div style={section}>
         <button style={gender==="Male"?btnGreen:btn} onClick={()=>setGender("Male")}>Male</button>
         <button style={gender==="Female"?btnGreen:btn} onClick={()=>setGender("Female")}>Female</button>
       </div>
 
-      <div>
+      {/* CLASS */}
+      <div style={section}>
         {classes.map(c=>(
           <button key={c} style={carClass===c?btnBlue:btn} onClick={()=>setCarClass(c)}>
             {c}
@@ -79,19 +111,32 @@ export default function App(){
         ))}
       </div>
 
+      {/* SCORES */}
       {categories.map(cat=>(
-        <div key={cat} style={{marginTop:10}}>
+        <div key={cat} style={section}>
           <strong>{cat}</strong><br/>
-          {Array.from({length:21},(_,i)=>(
-            <button key={i} onClick={()=>setScore(cat,i)} style={scores[cat]===i?btnRed:btn}>
-              {i}
-            </button>
-          ))}
+
+          <div style={rowWrap}>
+            {Array.from({length:21},(_,i)=>(
+              <button 
+                key={i} 
+                onClick={()=>setScore(cat,i)} 
+                style={scores[cat]===i?btnRed:btn}
+              >
+                {i}
+              </button>
+            ))}
+          </div>
         </div>
       ))}
 
-      <button style={btnBig} onClick={submit}>Submit</button>
+      {/* ACTION BUTTONS */}
+      <div style={section}>
+        <button style={btnBig} onClick={submit}>Submit</button>
+        <button style={btnBig} onClick={()=>setView("top150")}>Top 150</button>
+      </div>
 
+      {/* LIVE LEADERBOARD */}
       <h3>Leaderboard</h3>
 
       {leaderboard().map((e,i)=>(
@@ -104,11 +149,46 @@ export default function App(){
   );
 }
 
-const input = {display:"block",width:"100%",padding:"12px",marginBottom:"10px"};
-const row = {padding:"10px",background:"#eee",marginBottom:"6px"};
+const input = {
+  display:"block",
+  width:"100%",
+  padding:"14px",
+  marginBottom:"12px",
+  fontSize:"16px"
+};
 
-const btn = {padding:"10px",margin:"4px"};
+const section = {
+  marginTop:"20px",
+  marginBottom:"20px"
+};
+
+const row = {
+  padding:"12px",
+  background:"#eee",
+  marginBottom:"8px",
+  borderRadius:"6px"
+};
+
+const rowWrap = {
+  display:"flex",
+  flexWrap:"wrap",
+  gap:"8px"
+};
+
+const btn = {
+  padding:"10px 14px",
+  margin:"4px",
+  fontSize:"14px"
+};
+
 const btnRed = {...btn,background:"red",color:"#fff"};
 const btnBlue = {...btn,background:"blue",color:"#fff"};
 const btnGreen = {...btn,background:"green",color:"#fff"};
-const btnBig = {padding:"14px",margin:"10px",background:"#000",color:"#fff"};
+
+const btnBig = {
+  padding:"16px",
+  margin:"8px",
+  background:"#000",
+  color:"#fff",
+  fontSize:"16px"
+};
