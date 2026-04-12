@@ -24,7 +24,6 @@ const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
 export default function App(){
 
   const [screen,setScreen] = useState("setup");
-
   const [eventName,setEventName] = useState("");
   const [judge,setJudge] = useState("");
 
@@ -37,6 +36,7 @@ export default function App(){
 
   const [data,setData] = useState([]);
   const [top150,setTop150] = useState([]);
+  const [search,setSearch] = useState("");
 
   const [car,setCar] = useState("");
   const [driver,setDriver] = useState("");
@@ -50,10 +50,10 @@ export default function App(){
   const [deductions,setDeductions] = useState({});
   const [tyres,setTyres] = useState({left:false,right:false});
 
-  useEffect(function(){
+  useEffect(()=>{
     loadData();
 
-    var savedJudge = localStorage.getItem("judge");
+    const savedJudge = localStorage.getItem("judge");
     if(savedJudge){
       setJudge(savedJudge);
       setLocked(true);
@@ -62,14 +62,12 @@ export default function App(){
   },[]);
 
   function loadData(){
-    getDocs(collection(db,"scores")).then(function(q){
-      setData(q.docs.map(function(doc){ return doc.data(); }));
+    getDocs(collection(db,"scores")).then(q=>{
+      setData(q.docs.map(doc=>doc.data()));
     });
   }
 
-  function startEvent(){
-    setScreen("judgeSelect");
-  }
+  function startEvent(){ setScreen("judgeSelect"); }
 
   function selectJudge(j){
     setJudge(j);
@@ -79,31 +77,27 @@ export default function App(){
   }
 
   function setScore(cat,val){
-    setScores(function(prev){
-      var u = Object.assign({}, prev);
-      u[cat] = val;
-      return u;
-    });
+    setScores(prev=>({...prev,[cat]:val}));
   }
 
   function toggleDeduction(d){
-    setDeductions(function(prev){
-      var u = Object.assign({}, prev);
-      u[d] = !u[d];
-      return u;
-    });
+    setDeductions(prev=>({...prev,[d]:!prev[d]}));
   }
 
   function submit(){
 
-    var total = Object.values(scores).reduce(function(a,b){ return a+b; },0);
+    if(Object.keys(scores).length===0){
+      alert("Add scores");
+      return;
+    }
 
-    var tyreScore = (tyres.left?5:0) + (tyres.right?5:0);
-    var deductionTotal = Object.values(deductions).filter(function(v){ return v; }).length * 10;
+    const total = Object.values(scores).reduce((a,b)=>a+b,0);
+    const tyreScore = (tyres.left?5:0)+(tyres.right?5:0);
+    const deductionTotal = Object.values(deductions).filter(v=>v).length*10;
 
-    var finalScore = total + tyreScore - deductionTotal;
+    const finalScore = total + tyreScore - deductionTotal;
 
-    var payload = {
+    const payload = {
       id: Date.now(),
       eventName,
       judge,
@@ -116,11 +110,9 @@ export default function App(){
       finalScore
     };
 
-    setData(function(prev){
-      return prev.concat([payload]);
-    });
+    setData(prev=>[...prev,payload]);
 
-    addDoc(collection(db,"scores"), payload).catch(function(){});
+    addDoc(collection(db,"scores"), payload).catch(()=>{});
 
     setScores({});
     setDeductions({});
@@ -130,23 +122,26 @@ export default function App(){
   }
 
   function combineScores(){
-    var combined = {};
+    const combined = {};
 
-    data.forEach(function(e){
-
-      var key = e.car || e.rego || e.driver || e.carName || e.id;
+    data.forEach(e=>{
+      const key = e.car || e.rego || e.id;
 
       if(!combined[key]){
         combined[key]={
-          car:e.car,
-          driver:e.driver,
-          rego:e.rego,
-          carName:e.carName,
+          car:e.car||"",
+          driver:e.driver||"",
+          rego:e.rego||"",
+          carName:e.carName||"",
           carClass:e.carClass,
           gender:e.gender,
           total:0
         };
       }
+
+      combined[key].driver = e.driver || combined[key].driver;
+      combined[key].rego = e.rego || combined[key].rego;
+      combined[key].carName = e.carName || combined[key].carName;
 
       combined[key].total += e.finalScore;
     });
@@ -157,7 +152,7 @@ export default function App(){
   function buildTop150(){
     setTop150(
       combineScores()
-      .sort(function(a,b){ return b.total-a.total; })
+      .sort((a,b)=>b.total-a.total)
       .slice(0,150)
     );
     setScreen("top150");
@@ -165,51 +160,28 @@ export default function App(){
 
   function printResults(){
 
-    var combined = combineScores();
+    const combined = combineScores();
 
-    var grouped = {};
-    combined.forEach(function(e){
-      var key = (e.carClass||"Unknown")+" - "+(e.gender||"Unknown");
-      if(!grouped[key]) grouped[key]=[];
-      grouped[key].push(e);
+    let html = `<h1>${eventName} Results</h1>`;
+
+    combined.sort((a,b)=>b.total-a.total).forEach((e,i)=>{
+      html += `<div>#${i+1} | Car: ${e.car||"-"} | Driver: ${e.driver||"-"} | Rego: ${e.rego||"-"} | Score: ${e.total}</div>`;
     });
 
-    Object.keys(grouped).forEach(function(k){
-      grouped[k].sort(function(a,b){ return b.total-a.total; });
-    });
-
-    var html = "<h1>"+eventName+" Results</h1>";
-
-    Object.keys(grouped).forEach(function(group){
-
-      html += "<h2>"+group+"</h2>";
-
-      grouped[group].forEach(function(e,i){
-        html += "<div>#"+(i+1)+" | Car: "+(e.car||"-")+" | Driver: "+(e.driver||"-")+" | Score: "+e.total+"</div>";
-      });
-
-    });
-
-    var win = window.open("", "_blank");
+    const win = window.open("");
     win.document.write(html);
-    win.document.close();
     win.print();
   }
 
-  var grouped = {};
-  combineScores().forEach(function(e){
-    var key = (e.carClass||"Unknown")+" - "+(e.gender||"Unknown");
-    if(!grouped[key]) grouped[key]=[];
-    grouped[key].push(e);
-  });
-
-  Object.keys(grouped).forEach(function(k){
-    grouped[k].sort(function(a,b){
-      return b.total-a.total;
+  // SEARCH FILTER
+  function filterData(list){
+    return list.filter(e=>{
+      const text = (e.car+" "+e.driver+" "+e.rego+" "+e.carName).toLowerCase();
+      return text.includes(search.toLowerCase());
     });
-  });
+  }
 
-  // -------- SCREENS --------
+  // ---------- SCREENS ----------
 
   if(screen==="setup"){
     return (
@@ -218,15 +190,9 @@ export default function App(){
 
         <input style={input} placeholder="Event Name" value={eventName} onChange={e=>setEventName(e.target.value)}/>
 
-        {[1,2,3,4,5,6].map(function(j){
-          return (
-            <input key={j} style={input} value={judgeNames[j]} onChange={function(e){
-              var u = Object.assign({}, judgeNames);
-              u[j] = e.target.value;
-              setJudgeNames(u);
-            }}/>
-          );
-        })}
+        {[1,2,3,4,5,6].map(j=>(
+          <input key={j} style={input} value={judgeNames[j]} onChange={e=>setJudgeNames({...judgeNames,[j]:e.target.value})}/>
+        ))}
 
         <button style={btnBig} onClick={startEvent}>Start Event</button>
       </div>
@@ -237,14 +203,11 @@ export default function App(){
     return (
       <div style={{padding:20}}>
         <h2>Select Judge</h2>
-
-        {[1,2,3,4,5,6].map(function(j){
-          return (
-            <button key={j} style={btnBig} onClick={function(){selectJudge(j);}}>
-              {judgeNames[j]}
-            </button>
-          );
-        })}
+        {[1,2,3,4,5,6].map(j=>(
+          <button key={j} style={btnBig} onClick={()=>selectJudge(j)}>
+            {judgeNames[j]}
+          </button>
+        ))}
       </div>
     );
   }
@@ -254,43 +217,52 @@ export default function App(){
       <div style={{padding:20}}>
         <h2>Top 150</h2>
 
-        {top150.map(function(e,i){
-          return (
-            <div key={i} style={row}>
-              #{i+1} | Car No: {e.car} | Driver: {e.driver} | Score: {e.total}
-            </div>
-          );
-        })}
+        <input style={input} placeholder="Search..." value={search} onChange={e=>setSearch(e.target.value)}/>
 
-        <button style={btnBig} onClick={function(){setScreen("leaderboard");}}>Leaderboard</button>
-        <button style={btnBig} onClick={function(){setScreen("judge");}}>Back</button>
+        {filterData(top150).map((e,i)=>(
+          <div key={i} style={row}>
+            #{i+1} | Car: {e.car} | Driver: {e.driver} | Rego: {e.rego} | Score: {e.total}
+          </div>
+        ))}
+
+        <button style={btnBig} onClick={()=>setScreen("leaderboard")}>Leaderboard</button>
+        <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
       </div>
     );
   }
 
   if(screen==="leaderboard"){
+    const grouped = {};
+    combineScores().forEach(e=>{
+      const key = (e.carClass||"Unknown")+" - "+(e.gender||"Unknown");
+      if(!grouped[key]) grouped[key]=[];
+      grouped[key].push(e);
+    });
+
+    Object.keys(grouped).forEach(k=>{
+      grouped[k].sort((a,b)=>b.total-a.total);
+    });
+
     return (
       <div style={{padding:20}}>
         <h2>Leaderboard</h2>
 
-        {Object.keys(grouped).map(function(group){
-          return (
-            <div key={group}>
-              <h3>{group}</h3>
+        <input style={input} placeholder="Search..." value={search} onChange={e=>setSearch(e.target.value)}/>
 
-              {grouped[group].map(function(e,i){
-                return (
-                  <div key={i} style={row}>
-                    #{i+1} | Car No: {e.car} | Driver: {e.driver} | Score: {e.total}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
+        {Object.keys(grouped).map(group=>(
+          <div key={group}>
+            <h3>{group}</h3>
 
-        <button style={btnBig} onClick={printResults}>Print Results</button>
-        <button style={btnBig} onClick={function(){setScreen("judge");}}>Back</button>
+            {filterData(grouped[group]).map((e,i)=>(
+              <div key={i} style={row}>
+                #{i+1} | Car: {e.car} | Driver: {e.driver} | Rego: {e.rego} | Score: {e.total}
+              </div>
+            ))}
+          </div>
+        ))}
+
+        <button style={btnBig} onClick={printResults}>Print</button>
+        <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
       </div>
     );
   }
@@ -312,25 +284,21 @@ export default function App(){
       </div>
 
       <div>
-        {classes.map(function(c){
-          return (
-            <button key={c} onClick={()=>setCarClass(c)} style={carClass===c?btnBlue:btn}>{c}</button>
-          );
-        })}
+        {classes.map(c=>(
+          <button key={c} onClick={()=>setCarClass(c)} style={carClass===c?btnBlue:btn}>{c}</button>
+        ))}
       </div>
 
-      {categories.map(function(cat){
-        return (
-          <div key={cat}>
-            <strong>{cat}</strong>
-            <div>
-              {Array.from({length:21},(_,i)=>(
-                <button key={i} onClick={()=>setScore(cat,i)} style={scores[cat]===i?btnRed:btn}>{i}</button>
-              ))}
-            </div>
+      {categories.map(cat=>(
+        <div key={cat}>
+          <strong>{cat}</strong>
+          <div>
+            {Array.from({length:21},(_,i)=>(
+              <button key={i} onClick={()=>setScore(cat,i)} style={scores[cat]===i?btnRed:btn}>{i}</button>
+            ))}
           </div>
-        );
-      })}
+        </div>
+      ))}
 
       <div>
         <strong>Blown Tyres (5pts each)</strong><br/>
@@ -340,11 +308,9 @@ export default function App(){
 
       <div>
         <strong>Deductions</strong><br/>
-        {deductionsList.map(function(d){
-          return (
-            <button key={d} onClick={()=>toggleDeduction(d)} style={deductions[d]?btnRed:btn}>{d}</button>
-          );
-        })}
+        {deductionsList.map(d=>(
+          <button key={d} onClick={()=>toggleDeduction(d)} style={deductions[d]?btnRed:btn}>{d}</button>
+        ))}
       </div>
 
       <button style={btnBig} onClick={submit}>Submit</button>
