@@ -10,7 +10,7 @@ const categories = [
 const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","4Cyl Open/Rotary"];
 const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
 
-export default function AppNEW(){
+export default function App(){
 
   const [screen,setScreen] = useState("home");
   const [judge,setJudge] = useState(null);
@@ -62,6 +62,7 @@ export default function AppNEW(){
       finalScore
     }]);
 
+    // RESET
     setScores({});
     setDeductions({});
     setTyres({left:false,right:false});
@@ -124,7 +125,7 @@ export default function AppNEW(){
     );
   }
 
-  // LEADERBOARD (GROUPED)
+  // LEADERBOARD
   if(screen==="leaderboard"){
 
     const grouped = {};
@@ -196,7 +197,7 @@ export default function AppNEW(){
       ))}
 
       <div>
-        <strong>Blown Tyres</strong><br/>
+        <strong>Blown Tyres (5pts each)</strong><br/>
         <button style={tyres.left?btnRed:btn} onClick={()=>setTyres(prev=>({...prev,left:!prev.left}))}>Left</button>
         <button style={tyres.right?btnRed:btn} onClick={()=>setTyres(prev=>({...prev,right:!prev.right}))}>Right</button>
       </div>
