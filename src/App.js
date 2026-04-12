@@ -11,6 +11,7 @@ const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","4Cyl Open/Rotary"];
 
 export default function App(){
 
+  // 🔥 START ON HOME SCREEN
   const [screen,setScreen] = useState("home");
 
   const [car,setCar] = useState("");
@@ -49,6 +50,7 @@ export default function App(){
 
     setData([...data,entry]);
 
+    // CLEAR FORM
     setScores({});
     setCar(""); 
     setDriver(""); 
@@ -66,18 +68,15 @@ export default function App(){
     return leaderboard().slice(0,150);
   }
 
-  // 🔥 COVER PAGE
+  // =========================
+  // 🔥 COVER PAGE (WORKING)
+  // =========================
   if(screen==="home"){
     return (
       <div style={home}>
-        
-        <img 
-          src="/logo.png" 
-          alt="logo" 
-          style={{maxWidth:"90%",marginBottom:"40px"}}
-        />
-
-        <h1 style={{color:"#fff"}}>AutoFest Burnout Champs</h1>
+        <h1 style={{color:"#fff",marginBottom:30}}>
+          AutoFest Burnout Champs
+        </h1>
 
         <button style={btnBig} onClick={()=>setScreen("judge")}>
           Start Judging
@@ -86,12 +85,13 @@ export default function App(){
         <button style={btnBig} onClick={()=>setScreen("top150")}>
           View Leaderboard
         </button>
-
       </div>
     );
   }
 
+  // =========================
   // 🔥 TOP 150
+  // =========================
   if(screen==="top150"){
     return (
       <div style={{padding:20}}>
@@ -110,7 +110,9 @@ export default function App(){
     );
   }
 
+  // =========================
   // 🔥 JUDGING SCREEN
+  // =========================
   return (
     <div style={{padding:20}}>
 
@@ -121,11 +123,18 @@ export default function App(){
       <input placeholder="Rego" value={rego} onChange={e=>setRego(e.target.value)} style={input}/>
       <input placeholder="Car Name" value={carName} onChange={e=>setCarName(e.target.value)} style={input}/>
 
+      {/* GENDER */}
       <div style={section}>
-        <button style={gender==="Male"?btnGreen:btn} onClick={()=>setGender("Male")}>Male</button>
-        <button style={gender==="Female"?btnGreen:btn} onClick={()=>setGender("Female")}>Female</button>
+        <button style={gender==="Male"?btnGreen:btn} onClick={()=>setGender("Male")}>
+          Male
+        </button>
+
+        <button style={gender==="Female"?btnGreen:btn} onClick={()=>setGender("Female")}>
+          Female
+        </button>
       </div>
 
+      {/* CLASS */}
       <div style={section}>
         {classes.map(c=>(
           <button key={c} style={carClass===c?btnBlue:btn} onClick={()=>setCarClass(c)}>
@@ -134,12 +143,18 @@ export default function App(){
         ))}
       </div>
 
+      {/* SCORES */}
       {categories.map(cat=>(
         <div key={cat} style={section}>
           <strong>{cat}</strong><br/>
+
           <div style={rowWrap}>
             {Array.from({length:21},(_,i)=>(
-              <button key={i} onClick={()=>setScore(cat,i)} style={scores[cat]===i?btnRed:btn}>
+              <button 
+                key={i} 
+                onClick={()=>setScore(cat,i)} 
+                style={scores[cat]===i?btnRed:btn}
+              >
                 {i}
               </button>
             ))}
@@ -147,25 +162,37 @@ export default function App(){
         </div>
       ))}
 
+      {/* ACTION BUTTONS */}
       <div style={section}>
         <button style={btnBig} onClick={submit}>Submit</button>
         <button style={btnBig} onClick={()=>setScreen("top150")}>Top 150</button>
         <button style={btnBig} onClick={()=>setScreen("home")}>Home</button>
       </div>
 
+      {/* LIVE LEADERBOARD */}
+      <h3>Leaderboard</h3>
+
+      {leaderboard().map((e,i)=>(
+        <div key={i} style={row}>
+          #{i+1} | Car: {e.car} | Driver: {e.driver} | Score: {e.total}
+        </div>
+      ))}
+
     </div>
   );
 }
 
+// =========================
 // STYLES
+// =========================
+
 const home = {
   height:"100vh",
   background:"#000",
   display:"flex",
   flexDirection:"column",
   alignItems:"center",
-  justifyContent:"center",
-  textAlign:"center"
+  justifyContent:"center"
 };
 
 const input = {
