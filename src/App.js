@@ -18,12 +18,13 @@ const categories = [
   "Driver Skill & Control"
 ];
 
-const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","Rotary"];
+const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","4Cyl Open/Rotary"];
 const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
 
 export default function App(){
 
   const [screen,setScreen] = useState("setup");
+
   const [eventName,setEventName] = useState("");
   const [judge,setJudge] = useState("");
 
@@ -36,7 +37,7 @@ export default function App(){
 
   const [data,setData] = useState([]);
   const [top150,setTop150] = useState([]);
-  const [search,setSearch] = useState("");
+  const [top30,setTop30] = useState([]);
 
   const [car,setCar] = useState("");
   const [driver,setDriver] = useState("");
@@ -111,7 +112,6 @@ export default function App(){
     };
 
     setData(prev=>[...prev,payload]);
-
     addDoc(collection(db,"scores"), payload).catch(()=>{});
 
     setScores({});
@@ -141,7 +141,6 @@ export default function App(){
 
       combined[key].driver = e.driver || combined[key].driver;
       combined[key].rego = e.rego || combined[key].rego;
-      combined[key].carName = e.carName || combined[key].carName;
 
       combined[key].total += e.finalScore;
     });
@@ -150,64 +149,29 @@ export default function App(){
   }
 
   function buildTop150(){
-    setTop150(
-      combineScores()
-      .sort((a,b)=>b.total-a.total)
-      .slice(0,150)
-    );
+    setTop150(combineScores().sort((a,b)=>b.total-a.total).slice(0,150));
     setScreen("top150");
   }
 
-  function printResults(){
-
-    const combined = combineScores();
-
-    let html = `<h1>${eventName} Results</h1>`;
-
-    combined.sort((a,b)=>b.total-a.total).forEach((e,i)=>{
-      html += `<div>#${i+1} | Car: ${e.car||"-"} | Driver: ${e.driver||"-"} | Rego: ${e.rego||"-"} | Score: ${e.total}</div>`;
-    });
-
-    const win = window.open("");
-    win.document.write(html);
-    win.print();
-  }
-
-  // SEARCH FILTER
-  function filterData(list){
-    return list.filter(e=>{
-      const text = (e.car+" "+e.driver+" "+e.rego+" "+e.carName).toLowerCase();
-      return text.includes(search.toLowerCase());
-    });
+  function buildTop30(){
+    setTop30(combineScores().sort((a,b)=>b.total-a.total).slice(0,30));
+    setScreen("top30");
   }
 
   // ---------- SCREENS ----------
 
-  if(screen==="setup"){
+  if(screen==="top30"){
     return (
       <div style={{padding:20}}>
-        <h2>Event Setup</h2>
+        <h2>🏆 TOP 30 FINALS (OVERALL)</h2>
 
-        <input style={input} placeholder="Event Name" value={eventName} onChange={e=>setEventName(e.target.value)}/>
-
-        {[1,2,3,4,5,6].map(j=>(
-          <input key={j} style={input} value={judgeNames[j]} onChange={e=>setJudgeNames({...judgeNames,[j]:e.target.value})}/>
+        {top30.map((e,i)=>(
+          <div key={i} style={row}>
+            #{i+1} | Car: {e.car} | Driver: {e.driver} | Score: {e.total}
+          </div>
         ))}
 
-        <button style={btnBig} onClick={startEvent}>Start Event</button>
-      </div>
-    );
-  }
-
-  if(screen==="judgeSelect" && !locked){
-    return (
-      <div style={{padding:20}}>
-        <h2>Select Judge</h2>
-        {[1,2,3,4,5,6].map(j=>(
-          <button key={j} style={btnBig} onClick={()=>selectJudge(j)}>
-            {judgeNames[j]}
-          </button>
-        ))}
+        <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
       </div>
     );
   }
@@ -217,55 +181,19 @@ export default function App(){
       <div style={{padding:20}}>
         <h2>Top 150</h2>
 
-        <input style={input} placeholder="Search..." value={search} onChange={e=>setSearch(e.target.value)}/>
-
-        {filterData(top150).map((e,i)=>(
+        {top150.map((e,i)=>(
           <div key={i} style={row}>
-            #{i+1} | Car: {e.car} | Driver: {e.driver} | Rego: {e.rego} | Score: {e.total}
+            #{i+1} | Car: {e.car} | Driver: {e.driver} | Score: {e.total}
           </div>
         ))}
 
-        <button style={btnBig} onClick={()=>setScreen("leaderboard")}>Leaderboard</button>
+        <button style={btnBig} onClick={buildTop30}>Top 30 Finals</button>
         <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
       </div>
     );
   }
 
-  if(screen==="leaderboard"){
-    const grouped = {};
-    combineScores().forEach(e=>{
-      const key = (e.carClass||"Unknown")+" - "+(e.gender||"Unknown");
-      if(!grouped[key]) grouped[key]=[];
-      grouped[key].push(e);
-    });
-
-    Object.keys(grouped).forEach(k=>{
-      grouped[k].sort((a,b)=>b.total-a.total);
-    });
-
-    return (
-      <div style={{padding:20}}>
-        <h2>Leaderboard</h2>
-
-        <input style={input} placeholder="Search..." value={search} onChange={e=>setSearch(e.target.value)}/>
-
-        {Object.keys(grouped).map(group=>(
-          <div key={group}>
-            <h3>{group}</h3>
-
-            {filterData(grouped[group]).map((e,i)=>(
-              <div key={i} style={row}>
-                #{i+1} | Car: {e.car} | Driver: {e.driver} | Rego: {e.rego} | Score: {e.total}
-              </div>
-            ))}
-          </div>
-        ))}
-
-        <button style={btnBig} onClick={printResults}>Print</button>
-        <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
-      </div>
-    );
-  }
+  // ---------- MAIN ----------
 
   return (
     <div style={{padding:20}}>
@@ -276,7 +204,6 @@ export default function App(){
       <input style={input} placeholder="Car #" value={car} onChange={e=>setCar(e.target.value)}/>
       <input style={input} placeholder="Driver" value={driver} onChange={e=>setDriver(e.target.value)}/>
       <input style={input} placeholder="Rego" value={rego} onChange={e=>setRego(e.target.value)}/>
-      <input style={input} placeholder="Car Name" value={carName} onChange={e=>setCarName(e.target.value)}/>
 
       <div>
         <button style={gender==="Male"?btnGreen:btn} onClick={()=>setGender("Male")}>Male</button>
@@ -315,7 +242,6 @@ export default function App(){
 
       <button style={btnBig} onClick={submit}>Submit</button>
       <button style={btnBig} onClick={buildTop150}>Top 150</button>
-      <button style={btnBig} onClick={()=>setScreen("leaderboard")}>Leaderboard</button>
 
     </div>
   );
