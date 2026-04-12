@@ -34,8 +34,7 @@ export default function App(){
   });
 
   const [data,setData] = useState([]);
-  const [competitors,setCompetitors] = useState({}); // 🔥 LOCKED DATA
-
+  const [competitors,setCompetitors] = useState({});
   const [top150,setTop150] = useState([]);
   const [top30,setTop30] = useState([]);
 
@@ -53,7 +52,6 @@ export default function App(){
 
   useEffect(()=>{
     loadData();
-
     const savedJudge = localStorage.getItem("judge");
     if(savedJudge){
       setJudge(savedJudge);
@@ -100,18 +98,10 @@ export default function App(){
       return;
     }
 
-    // 🔥 LOCK COMPETITOR DETAILS
     let comp = competitors[car];
 
     if(!comp){
-      comp = {
-        driver,
-        rego,
-        carName,
-        gender,
-        carClass
-      };
-
+      comp = { driver, rego, carName, gender, carClass };
       setCompetitors(prev=>({...prev,[car]:comp}));
     }
 
@@ -126,7 +116,7 @@ export default function App(){
       eventName,
       judge,
       car,
-      ...comp, // 🔥 USE LOCKED DATA
+      ...comp,
       finalScore
     };
 
@@ -226,7 +216,7 @@ export default function App(){
 
         {top150.map((e,i)=>(
           <div key={i} style={row}>
-            #{i+1} | Car: {e.car} | Driver: {e.driver} | Rego: {e.rego} | Car: {e.carName} | Score: {e.total}
+            #{i+1} | Car: {e.car} | Driver: {e.driver} | Score: {e.total}
           </div>
         ))}
 
@@ -254,13 +244,31 @@ export default function App(){
   }
 
   if(screen==="leaderboard"){
+
+    const grouped = {};
+    combineScores().forEach(e=>{
+      const key = (e.carClass||"Unknown")+" - "+(e.gender||"Unknown");
+      if(!grouped[key]) grouped[key]=[];
+      grouped[key].push(e);
+    });
+
+    Object.keys(grouped).forEach(k=>{
+      grouped[k].sort((a,b)=>b.total-a.total);
+    });
+
     return (
       <div style={{padding:20}}>
-        <h2>Leaderboard</h2>
+        <h2>Leaderboard (By Class)</h2>
 
-        {combineScores().map((e,i)=>(
-          <div key={i} style={row}>
-            #{i+1} | Car: {e.car} | Driver: {e.driver} | Rego: {e.rego} | Car: {e.carName} | Score: {e.total}
+        {Object.keys(grouped).map(group=>(
+          <div key={group} style={{marginBottom:30}}>
+            <h3 style={{background:"#000",color:"#fff",padding:10}}>{group}</h3>
+
+            {grouped[group].map((e,i)=>(
+              <div key={i} style={row}>
+                #{i+1} | Car: {e.car} | Driver: {e.driver} | Rego: {e.rego} | Car: {e.carName} | Score: {e.total}
+              </div>
+            ))}
           </div>
         ))}
 
