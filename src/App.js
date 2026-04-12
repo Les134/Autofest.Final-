@@ -62,7 +62,6 @@ export default function App(){
       finalScore
     }]);
 
-    // RESET
     setScores({});
     setDeductions({});
     setTyres({left:false,right:false});
@@ -197,7 +196,7 @@ export default function App(){
       ))}
 
       <div>
-        <strong>Blown Tyres (5pts each)</strong><br/>
+        <strong>Blown Tyres</strong><br/>
         <button style={tyres.left?btnRed:btn} onClick={()=>setTyres(prev=>({...prev,left:!prev.left}))}>Left</button>
         <button style={tyres.right?btnRed:btn} onClick={()=>setTyres(prev=>({...prev,right:!prev.right}))}>Right</button>
       </div>
