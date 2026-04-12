@@ -34,6 +34,8 @@ export default function App(){
   });
 
   const [data,setData] = useState([]);
+  const [competitors,setCompetitors] = useState({}); // 🔥 LOCKED DATA
+
   const [top150,setTop150] = useState([]);
   const [top30,setTop30] = useState([]);
 
@@ -88,9 +90,29 @@ export default function App(){
 
   function submit(){
 
+    if(!car){
+      alert("Car number required");
+      return;
+    }
+
     if(Object.keys(scores).length===0){
       alert("Add scores");
       return;
+    }
+
+    // 🔥 LOCK COMPETITOR DETAILS
+    let comp = competitors[car];
+
+    if(!comp){
+      comp = {
+        driver,
+        rego,
+        carName,
+        gender,
+        carClass
+      };
+
+      setCompetitors(prev=>({...prev,[car]:comp}));
     }
 
     const total = Object.values(scores).reduce((a,b)=>a+b,0);
@@ -104,11 +126,7 @@ export default function App(){
       eventName,
       judge,
       car,
-      driver,
-      rego,
-      carName,
-      gender,
-      carClass,
+      ...comp, // 🔥 USE LOCKED DATA
       finalScore
     };
 
@@ -126,23 +144,19 @@ export default function App(){
     const combined = {};
 
     data.forEach(e=>{
-      const key = e.car || e.rego || e.id;
+      const key = e.car;
 
       if(!combined[key]){
         combined[key]={
-          car:e.car||"",
-          driver:e.driver||"",
-          rego:e.rego||"",
-          carName:e.carName||"",
+          car:e.car,
+          driver:e.driver,
+          rego:e.rego,
+          carName:e.carName,
           carClass:e.carClass,
           gender:e.gender,
           total:0
         };
       }
-
-      combined[key].driver = e.driver || combined[key].driver;
-      combined[key].rego = e.rego || combined[key].rego;
-      combined[key].carName = e.carName || combined[key].carName;
 
       combined[key].total += e.finalScore;
     });
@@ -161,13 +175,12 @@ export default function App(){
   }
 
   function printResults(){
-
     const combined = combineScores();
 
     let html = `<h1>${eventName} Results</h1>`;
 
     combined.sort((a,b)=>b.total-a.total).forEach((e,i)=>{
-      html += `<div>#${i+1} | Car: ${e.car} | Driver: ${e.driver} | Rego: ${e.rego} | Score: ${e.total}</div>`;
+      html += `<div>#${i+1} | Car: ${e.car} | Driver: ${e.driver} | Rego: ${e.rego} | Car: ${e.carName} | Score: ${e.total}</div>`;
     });
 
     const win = window.open("");
@@ -213,7 +226,7 @@ export default function App(){
 
         {top150.map((e,i)=>(
           <div key={i} style={row}>
-            #{i+1} | Car: {e.car} | Driver: {e.driver} | Score: {e.total}
+            #{i+1} | Car: {e.car} | Driver: {e.driver} | Rego: {e.rego} | Car: {e.carName} | Score: {e.total}
           </div>
         ))}
 
@@ -241,29 +254,13 @@ export default function App(){
   }
 
   if(screen==="leaderboard"){
-    const grouped = {};
-    combineScores().forEach(e=>{
-      const key = (e.carClass||"Unknown")+" - "+(e.gender||"Unknown");
-      if(!grouped[key]) grouped[key]=[];
-      grouped[key].push(e);
-    });
-
-    Object.keys(grouped).forEach(k=>{
-      grouped[k].sort((a,b)=>b.total-a.total);
-    });
-
     return (
       <div style={{padding:20}}>
         <h2>Leaderboard</h2>
 
-        {Object.keys(grouped).map(group=>(
-          <div key={group}>
-            <h3>{group}</h3>
-            {grouped[group].map((e,i)=>(
-              <div key={i} style={row}>
-                #{i+1} | Car: {e.car} | Driver: {e.driver} | Score: {e.total}
-              </div>
-            ))}
+        {combineScores().map((e,i)=>(
+          <div key={i} style={row}>
+            #{i+1} | Car: {e.car} | Driver: {e.driver} | Rego: {e.rego} | Car: {e.carName} | Score: {e.total}
           </div>
         ))}
 
