@@ -1,3 +1,4 @@
+🔥 FULL CLEAN WORKING FILE (COPY ALL)
 import React, { useState } from "react";
 
 const categories = [
@@ -10,10 +11,9 @@ const categories = [
 const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","4Cyl Open/Rotary"];
 const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
 
-export default function App(){
+export default function AppNEW(){
 
   const [screen,setScreen] = useState("home");
-
   const [judge,setJudge] = useState(null);
 
   const [car,setCar] = useState("");
@@ -31,11 +31,11 @@ export default function App(){
   const [data,setData] = useState([]);
 
   function setScore(cat,val){
-    setScores({...scores,[cat]:val});
+    setScores(prev=>({...prev,[cat]:val}));
   }
 
   function toggleDeduction(d){
-    setDeductions({...deductions,[d]:!deductions[d]});
+    setDeductions(prev=>({...prev,[d]:!prev[d]}));
   }
 
   function submit(){
@@ -67,8 +67,9 @@ export default function App(){
       finalScore
     };
 
-    setData([...data,entry]);
+    setData(prev=>[...prev,entry]);
 
+    // RESET
     setScores({});
     setDeductions({});
     setTyres({left:false,right:false});
@@ -128,7 +129,9 @@ export default function App(){
           </div>
         ))}
 
-        <button style={btnBig} onClick={()=>setScreen("home")}>Home</button>
+        <button style={btnBig} onClick={()=>setScreen("home")}>
+          Home
+        </button>
       </div>
     );
   }
@@ -139,10 +142,10 @@ export default function App(){
 
       <h3>Judge {judge}</h3>
 
-      <input placeholder="Car #" value={car} onChange={e=>setCar(e.target.value)} style={input}/>
-      <input placeholder="Driver" value={driver} onChange={e=>setDriver(e.target.value)} style={input}/>
-      <input placeholder="Rego" value={rego} onChange={e=>setRego(e.target.value)} style={input}/>
-      <input placeholder="Car Name" value={carName} onChange={e=>setCarName(e.target.value)} style={input}/>
+      <input style={input} placeholder="Car #" value={car} onChange={e=>setCar(e.target.value)}/>
+      <input style={input} placeholder="Driver" value={driver} onChange={e=>setDriver(e.target.value)}/>
+      <input style={input} placeholder="Rego" value={rego} onChange={e=>setRego(e.target.value)}/>
+      <input style={input} placeholder="Car Name" value={carName} onChange={e=>setCarName(e.target.value)}/>
 
       <div>
         <button style={gender==="Male"?btnGreen:btn} onClick={()=>setGender("Male")}>Male</button>
@@ -161,21 +164,25 @@ export default function App(){
         <div key={cat}>
           <strong>{cat}</strong><br/>
           {Array.from({length:21},(_,i)=>(
-            <button key={i} onClick={()=>setScore(cat,i)} style={scores[cat]===i?btnRed:btn}>{i}</button>
+            <button key={i} onClick={()=>setScore(cat,i)} style={scores[cat]===i?btnRed:btn}>
+              {i}
+            </button>
           ))}
         </div>
       ))}
 
       <div>
         <strong>Blown Tyres (5pts each)</strong><br/>
-        <button style={tyres.left?btnRed:btn} onClick={()=>setTyres({...tyres,left:!tyres.left})}>Left</button>
-        <button style={tyres.right?btnRed:btn} onClick={()=>setTyres({...tyres,right:!tyres.right})}>Right</button>
+        <button style={tyres.left?btnRed:btn} onClick={()=>setTyres(prev=>({...prev,left:!prev.left}))}>Left</button>
+        <button style={tyres.right?btnRed:btn} onClick={()=>setTyres(prev=>({...prev,right:!prev.right}))}>Right</button>
       </div>
 
       <div>
         <strong>Deductions</strong><br/>
         {deductionsList.map(d=>(
-          <button key={d} onClick={()=>toggleDeduction(d)} style={deductions[d]?btnRed:btn}>{d}</button>
+          <button key={d} onClick={()=>toggleDeduction(d)} style={deductions[d]?btnRed:btn}>
+            {d}
+          </button>
         ))}
       </div>
 
@@ -196,7 +203,15 @@ export default function App(){
 }
 
 // styles
-const home = {height:"100vh",background:"#000",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center"};
+const home = {
+  height:"100vh",
+  background:"#000",
+  display:"flex",
+  flexDirection:"column",
+  justifyContent:"center",
+  alignItems:"center"
+};
+
 const input = {display:"block",width:"100%",padding:"14px",marginBottom:"10px"};
 const row = {padding:"10px",background:"#eee",marginBottom:"6px"};
 const btn = {padding:"10px",margin:"4px"};
