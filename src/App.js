@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 
 const categories = [
@@ -219,3 +218,4 @@ const btnRed = {...btn,background:"red",color:"#fff"};
 const btnBlue = {...btn,background:"blue",color:"#fff"};
 const btnGreen = {...btn,background:"green",color:"#fff"};
 const btnBig = {padding:"16px",margin:"10px",background:"#000",color:"#fff"};
+
