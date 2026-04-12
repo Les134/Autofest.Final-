@@ -15,8 +15,7 @@ const categories = [
   "Instant Smoke",
   "Volume of Smoke",
   "Constant Smoke",
-  "Driver Skill & Control",
-  "Blown Tyres"
+  "Driver Skill & Control"
 ];
 
 const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","Rotary"];
@@ -49,11 +48,11 @@ export default function App(){
 
   const [scores,setScores] = useState({});
   const [deductions,setDeductions] = useState({});
+  const [tyres,setTyres] = useState({left:false,right:false});
 
   useEffect(function(){
     loadData();
 
-    // 🔥 restore session
     var savedJudge = localStorage.getItem("judge");
     if(savedJudge){
       setJudge(savedJudge);
@@ -69,10 +68,6 @@ export default function App(){
   }
 
   function startEvent(){
-    if(!eventName){
-      alert("Enter Event Name");
-      return;
-    }
     setScreen("judgeSelect");
   }
 
@@ -102,8 +97,13 @@ export default function App(){
   function submit(){
 
     var total = Object.values(scores).reduce((a,b)=>a+b,0);
-    var deductionsTotal = Object.values(deductions).filter(v=>v).length * 10;
-    var finalScore = total - deductionsTotal;
+
+    // 🔥 tyre scoring
+    var tyreScore = (tyres.left?5:0) + (tyres.right?5:0);
+
+    var deductionTotal = Object.values(deductions).filter(v=>v).length * 10;
+
+    var finalScore = total + tyreScore - deductionTotal;
 
     var payload = {
       eventName,
@@ -118,11 +118,12 @@ export default function App(){
     };
 
     setData(prev=>prev.concat([payload]));
-
     addDoc(collection(db,"scores"), payload).catch(()=>{});
 
+    // reset
     setScores({});
     setDeductions({});
+    setTyres({left:false,right:false});
     setCar(""); setDriver(""); setRego(""); setCarName("");
     setGender(""); setCarClass("");
   }
@@ -131,11 +132,22 @@ export default function App(){
     var combined = {};
     data.forEach(e=>{
       var key = e.car || e.rego || "Unknown";
+
       if(!combined[key]){
-        combined[key]={car:e.car,carClass:e.carClass,gender:e.gender,total:0};
+        combined[key]={
+          car:e.car,
+          driver:e.driver,
+          rego:e.rego,
+          carName:e.carName,
+          carClass:e.carClass,
+          gender:e.gender,
+          total:0
+        };
       }
+
       combined[key].total += e.finalScore;
     });
+
     return Object.values(combined);
   }
 
@@ -144,32 +156,31 @@ export default function App(){
     setScreen("top150");
   }
 
+  var grouped = {};
+  combineScores().forEach(e=>{
+    var key = (e.carClass||"Unknown")+" - "+(e.gender||"Unknown");
+    if(!grouped[key]) grouped[key]=[];
+    grouped[key].push(e);
+  });
+
+  Object.keys(grouped).forEach(k=>{
+    grouped[k].sort((a,b)=>b.total-a.total);
+  });
+
   // -------- SCREENS --------
 
   if(screen==="setup"){
     return (
       <div style={{padding:20}}>
-        <h1>🏁 Event Setup</h1>
+        <h2>Event Setup</h2>
 
-        <input
-          style={input}
-          placeholder="Event Name"
-          value={eventName}
-          onChange={e=>setEventName(e.target.value)}
-        />
+        <input style={input} placeholder="Event Name" value={eventName} onChange={e=>setEventName(e.target.value)}/>
 
-        <h3>Judges</h3>
         {[1,2,3,4,5,6].map(j=>(
-          <input key={j}
-            style={input}
-            value={judgeNames[j]}
-            onChange={e=>setJudgeNames({...judgeNames,[j]:e.target.value})}
-          />
+          <input key={j} style={input} value={judgeNames[j]} onChange={e=>setJudgeNames({...judgeNames,[j]:e.target.value})}/>
         ))}
 
-        <button style={btnBig} onClick={startEvent}>
-          Start Event
-        </button>
+        <button style={btnBig} onClick={startEvent}>Start Event</button>
       </div>
     );
   }
@@ -190,18 +201,41 @@ export default function App(){
   if(screen==="top150"){
     return (
       <div style={{padding:20}}>
-        <h2>{eventName} - Top 150</h2>
+        <h2>Top 150</h2>
+
         {top150.map((e,i)=>(
           <div key={i} style={row}>
-            #{i+1} | {e.car} | {e.total}
+            #{i+1} | Car No: {e.car} | Driver: {e.driver} | Score: {e.total}
           </div>
         ))}
+
+        <button style={btnBig} onClick={()=>setScreen("leaderboard")}>Leaderboard</button>
         <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
       </div>
     );
   }
 
-  // -------- MAIN JUDGE SCREEN --------
+  if(screen==="leaderboard"){
+    return (
+      <div style={{padding:20}}>
+        <h2>Leaderboard</h2>
+
+        {Object.keys(grouped).map(group=>(
+          <div key={group}>
+            <h3>{group}</h3>
+
+            {grouped[group].map((e,i)=>(
+              <div key={i} style={row}>
+                #{i+1} | Car No: {e.car} | Driver: {e.driver} | Score: {e.total}
+              </div>
+            ))}
+          </div>
+        ))}
+
+        <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
+      </div>
+    );
+  }
 
   return (
     <div style={{padding:20}}>
@@ -211,6 +245,8 @@ export default function App(){
 
       <input style={input} placeholder="Car #" value={car} onChange={e=>setCar(e.target.value)}/>
       <input style={input} placeholder="Driver" value={driver} onChange={e=>setDriver(e.target.value)}/>
+      <input style={input} placeholder="Rego" value={rego} onChange={e=>setRego(e.target.value)}/>
+      <input style={input} placeholder="Car Name" value={carName} onChange={e=>setCarName(e.target.value)}/>
 
       <div>
         <button style={gender==="Male"?btnGreen:btn} onClick={()=>setGender("Male")}>Male</button>
@@ -219,46 +255,43 @@ export default function App(){
 
       <div>
         {classes.map(c=>(
-          <button key={c}
-            onClick={()=>setCarClass(c)}
-            style={carClass===c?btnBlue:btn}>
-            {c}
-          </button>
+          <button key={c} onClick={()=>setCarClass(c)} style={carClass===c?btnBlue:btn}>{c}</button>
         ))}
       </div>
 
-      {categories.map(cat=>{
-        var max = cat==="Blown Tyres"?5:20;
-
-        return (
-          <div key={cat} style={scoreBlock}>
-            <strong>{cat}</strong>
-            <div>
-              {Array.from({length:max+1},(_,i)=>(
-                <button key={i}
-                  onClick={()=>setScore(cat,i)}
-                  style={scores[cat]===i?btnRed:btn}>
-                  {i}
-                </button>
-              ))}
-            </div>
+      {categories.map(cat=>(
+        <div key={cat}>
+          <strong>{cat}</strong>
+          <div>
+            {Array.from({length:21},(_,i)=>(
+              <button key={i} onClick={()=>setScore(cat,i)} style={scores[cat]===i?btnRed:btn}>{i}</button>
+            ))}
           </div>
-        );
-      })}
+        </div>
+      ))}
 
+      {/* 🔥 BLOWN TYRES */}
+      <div>
+        <strong>Blown Tyres (5pts each)</strong><br/>
+        <button style={tyres.left?btnRed:btn} onClick={()=>setTyres({...tyres,left:!tyres.left})}>
+          Left Tyre
+        </button>
+        <button style={tyres.right?btnRed:btn} onClick={()=>setTyres({...tyres,right:!tyres.right})}>
+          Right Tyre
+        </button>
+      </div>
+
+      {/* DEDUCTIONS */}
       <div>
         <strong>Deductions</strong><br/>
         {deductionsList.map(d=>(
-          <button key={d}
-            onClick={()=>toggleDeduction(d)}
-            style={deductions[d]?btnRed:btn}>
-            {d}
-          </button>
+          <button key={d} onClick={()=>toggleDeduction(d)} style={deductions[d]?btnRed:btn}>{d}</button>
         ))}
       </div>
 
       <button style={btnBig} onClick={submit}>Submit</button>
       <button style={btnBig} onClick={buildTop150}>Top 150</button>
+      <button style={btnBig} onClick={()=>setScreen("leaderboard")}>Leaderboard</button>
 
     </div>
   );
@@ -266,7 +299,6 @@ export default function App(){
 
 // styles
 const input = {display:"block",width:"100%",padding:"14px",marginBottom:"12px"};
-const scoreBlock = {marginTop:25,marginBottom:30};
 const row = {padding:"14px",marginBottom:"10px",background:"#eee"};
 const btn = {padding:"14px",margin:"6px"};
 const btnRed = {...btn,background:"red",color:"#fff"};
