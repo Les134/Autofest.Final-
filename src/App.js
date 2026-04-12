@@ -11,7 +11,15 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const categories = ["Smoke","Commitment","Style","Control","Entertainment"];
+// 🔥 UPDATED CATEGORIES
+const categories = [
+  "Instant Smoke",
+  "Volume of Smoke",
+  "Constant Smoke",
+  "Driver Skill & Control",
+  "Blown Tyres"
+];
+
 const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","Rotary"];
 const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
 
@@ -266,11 +274,13 @@ export default function App(){
       </div>
 
       {categories.map(function(cat){
+        var max = cat === "Blown Tyres" ? 5 : 20;
+
         return (
           <div key={cat} style={scoreBlock}>
             <strong>{cat}</strong>
             <div>
-              {Array.from({length:21},(_,i)=>(
+              {Array.from({length:max+1},(_,i)=>(
                 <button key={i}
                   onClick={function(){setScore(cat,i);}}
                   style={scores[cat]===i?btnRed:btn}>
@@ -282,7 +292,6 @@ export default function App(){
         );
       })}
 
-      {/* 🔥 MOVED HERE */}
       <div style={section}>
         <strong>Deductions</strong><br/>
         {deductionsList.map(function(d){
