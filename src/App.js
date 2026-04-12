@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, getDocs } from "firebase/firestore";
+import { getFirestore, collection, addDoc, onSnapshot } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5NhDJMBwhMpUUL3XIHUnISTuCeQkXKS8",
@@ -29,7 +29,6 @@ export default function App(){
   const [judge,setJudge] = useState("");
   const [locked,setLocked] = useState(false);
 
-  const [adminMode,setAdminMode] = useState(false);
   const [adminCode,setAdminCode] = useState("");
 
   const [judgeNames,setJudgeNames] = useState({
@@ -55,7 +54,9 @@ export default function App(){
   const [tyres,setTyres] = useState({left:false,right:false});
 
   useEffect(()=>{
-    loadData();
+    const unsubscribe = onSnapshot(collection(db,"scores"), (snapshot)=>{
+      setData(snapshot.docs.map(doc=>doc.data()));
+    });
 
     const savedJudge = localStorage.getItem("judge");
     if(savedJudge){
@@ -63,13 +64,9 @@ export default function App(){
       setLocked(true);
       setScreen("judge");
     }
-  },[]);
 
-  function loadData(){
-    getDocs(collection(db,"scores")).then(q=>{
-      setData(q.docs.map(doc=>doc.data()));
-    });
-  }
+    return ()=>unsubscribe();
+  },[]);
 
   function startEvent(){
     if(!eventName){ alert("Enter event name"); return; }
@@ -116,17 +113,14 @@ export default function App(){
 
     const finalScore = total + tyreScore - deductionTotal;
 
-    const payload = {
+    addDoc(collection(db,"scores"),{
       id: Date.now(),
       eventName,
       judge,
       car,
       ...comp,
       finalScore
-    };
-
-    setData(prev=>[...prev,payload]);
-    addDoc(collection(db,"scores"), payload).catch(()=>{});
+    });
 
     setScores({});
     setDeductions({});
@@ -139,21 +133,10 @@ export default function App(){
     const combined = {};
 
     data.forEach(e=>{
-      const key = e.car;
-
-      if(!combined[key]){
-        combined[key]={
-          car:e.car,
-          driver:e.driver,
-          rego:e.rego,
-          carName:e.carName,
-          carClass:e.carClass,
-          gender:e.gender,
-          total:0
-        };
+      if(!combined[e.car]){
+        combined[e.car] = {...e,total:0};
       }
-
-      combined[key].total += e.finalScore;
+      combined[e.car].total += e.finalScore;
     });
 
     return Object.values(combined);
@@ -170,30 +153,21 @@ export default function App(){
   }
 
   function printResults(){
-    const combined = combineScores();
-
-    let html = `<h1>${eventName} Results</h1>`;
-
-    combined.sort((a,b)=>b.total-a.total).forEach((e,i)=>{
-      html += `<div>#${i+1} | Car: ${e.car} | Driver: ${e.driver} | Rego: ${e.rego} | Car: ${e.carName} | Score: ${e.total}</div>`;
-    });
-
+    const list = combineScores().sort((a,b)=>b.total-a.total);
     const win = window.open("");
-    win.document.write(html);
+    win.document.write(`<h1>${eventName}</h1>`);
+    list.forEach((e,i)=>{
+      win.document.write(`<div>#${i+1} | ${e.car} | ${e.driver} | ${e.total}</div>`);
+    });
     win.print();
   }
 
-  // ADMIN LOGIN
-  if(screen==="adminLogin"){
+  // ADMIN
+  if(screen==="admin"){
     return (
       <div style={{padding:20}}>
-        <h2>Admin Login</h2>
-        <input style={input} value={adminCode} onChange={e=>setAdminCode(e.target.value)} placeholder="Code"/>
-        <button style={btnBig} onClick={()=>{
-          if(adminCode==="ADMIN123"){
-            setScreen("adminPanel");
-          } else alert("Wrong code");
-        }}>Login</button>
+        <input style={input} placeholder="Admin Code" value={adminCode} onChange={e=>setAdminCode(e.target.value)}/>
+        <button style={btnBig} onClick={()=>adminCode==="ADMIN123"?setScreen("adminPanel"):alert("Wrong")}>Login</button>
       </div>
     );
   }
@@ -201,15 +175,8 @@ export default function App(){
   if(screen==="adminPanel"){
     return (
       <div style={{padding:20}}>
-        <h2>Admin Panel</h2>
-
-        <button style={btnBig} onClick={()=>{setData([]); alert("Scores cleared");}}>Clear Scores</button>
-
-        <button style={btnBig} onClick={()=>{localStorage.removeItem("judge"); setLocked(false); alert("Judges reset");}}>
-          Reset Judges
-        </button>
-
-        <button style={btnBig} onClick={()=>setScreen("setup")}>Back</button>
+        <button style={btnBig} onClick={()=>setData([])}>Clear Scores</button>
+        <button style={btnBig} onClick={()=>{localStorage.removeItem("judge");setLocked(false)}}>Reset Judges</button>
       </div>
     );
   }
@@ -218,16 +185,9 @@ export default function App(){
   if(screen==="setup"){
     return (
       <div style={{padding:20}}>
-        <h1>Event Setup</h1>
-
         <input style={input} placeholder="Event Name" value={eventName} onChange={e=>setEventName(e.target.value)}/>
-
-        {[1,2,3,4,5,6].map(j=>(
-          <input key={j} style={input} value={judgeNames[j]} onChange={e=>setJudgeNames({...judgeNames,[j]:e.target.value})}/>
-        ))}
-
-        <button style={btnBig} onClick={startEvent}>Start Event</button>
-        <button style={btnBig} onClick={()=>setScreen("adminLogin")}>Admin</button>
+        <button style={btnBig} onClick={startEvent}>Start</button>
+        <button style={btnBig} onClick={()=>setScreen("admin")}>Admin</button>
       </div>
     );
   }
@@ -235,7 +195,6 @@ export default function App(){
   if(screen==="judgeSelect" && !locked){
     return (
       <div style={{padding:20}}>
-        <h2>Select Judge</h2>
         {[1,2,3,4,5,6].map(j=>(
           <button key={j} style={btnBig} onClick={()=>selectJudge(j)}>
             {judgeNames[j]}
@@ -248,15 +207,10 @@ export default function App(){
   if(screen==="top150"){
     return (
       <div style={{padding:20}}>
-        <h2>Top 150</h2>
         {top150.map((e,i)=>(
-          <div key={i} style={row}>
-            #{i+1} | Car: {e.car} | Driver: {e.driver} | Score: {e.total}
-          </div>
+          <div key={i}>#{i+1} {e.car} {e.driver} {e.total}</div>
         ))}
-        <button style={btnBig} onClick={buildTop30}>Top 30 Finals</button>
-        <button style={btnBig} onClick={()=>setScreen("leaderboard")}>Leaderboard</button>
-        <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
+        <button style={btnBig} onClick={buildTop30}>Top 30</button>
       </div>
     );
   }
@@ -264,54 +218,38 @@ export default function App(){
   if(screen==="top30"){
     return (
       <div style={{padding:20}}>
-        <h2>Top 30 Finals</h2>
         {top30.map((e,i)=>(
-          <div key={i} style={row}>
-            #{i+1} | Car: {e.car} | Driver: {e.driver} | Score: {e.total}
-          </div>
+          <div key={i}>#{i+1} {e.car} {e.driver} {e.total}</div>
         ))}
-        <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
       </div>
     );
   }
 
   if(screen==="leaderboard"){
-
     const grouped = {};
     combineScores().forEach(e=>{
-      const key = (e.carClass||"Unknown")+" - "+(e.gender||"Unknown");
+      const key = (e.carClass||"")+"-"+(e.gender||"");
       if(!grouped[key]) grouped[key]=[];
       grouped[key].push(e);
     });
 
-    Object.keys(grouped).forEach(k=>{
-      grouped[k].sort((a,b)=>b.total-a.total);
-    });
-
     return (
       <div style={{padding:20}}>
-        <h2>Leaderboard</h2>
-
-        {Object.keys(grouped).map(group=>(
-          <div key={group}>
-            <h3>{group}</h3>
-            {grouped[group].map((e,i)=>(
-              <div key={i} style={row}>
-                #{i+1} | Car: {e.car} | Driver: {e.driver} | Rego: {e.rego} | Car: {e.carName} | Score: {e.total}
-              </div>
+        {Object.keys(grouped).map(g=>(
+          <div key={g}>
+            <h3>{g}</h3>
+            {grouped[g].sort((a,b)=>b.total-a.total).map((e,i)=>(
+              <div key={i}>#{i+1} {e.car} {e.driver} {e.total}</div>
             ))}
           </div>
         ))}
-
         <button style={btnBig} onClick={printResults}>Print</button>
-        <button style={btnBig} onClick={()=>setScreen("judge")}>Back</button>
       </div>
     );
   }
 
   return (
     <div style={{padding:20}}>
-      <h2>{eventName}</h2>
       <h3>{judgeNames[judge]}</h3>
 
       <input style={input} placeholder="Car #" value={car} onChange={e=>setCar(e.target.value)}/>
@@ -319,40 +257,14 @@ export default function App(){
       <input style={input} placeholder="Rego" value={rego} onChange={e=>setRego(e.target.value)}/>
       <input style={input} placeholder="Car Name" value={carName} onChange={e=>setCarName(e.target.value)}/>
 
-      <div>
-        <button style={gender==="Male"?btnGreen:btn} onClick={()=>setGender("Male")}>Male</button>
-        <button style={gender==="Female"?btnGreen:btn} onClick={()=>setGender("Female")}>Female</button>
-      </div>
-
-      <div>
-        {classes.map(c=>(
-          <button key={c} onClick={()=>setCarClass(c)} style={carClass===c?btnBlue:btn}>{c}</button>
-        ))}
-      </div>
-
       {categories.map(cat=>(
         <div key={cat}>
           <strong>{cat}</strong>
-          <div>
-            {Array.from({length:21},(_,i)=>(
-              <button key={i} onClick={()=>setScore(cat,i)} style={scores[cat]===i?btnRed:btn}>{i}</button>
-            ))}
-          </div>
+          {Array.from({length:21},(_,i)=>(
+            <button key={i} onClick={()=>setScore(cat,i)}>{i}</button>
+          ))}
         </div>
       ))}
-
-      <div>
-        <strong>Blown Tyres</strong><br/>
-        <button style={tyres.left?btnRed:btn} onClick={()=>setTyres({...tyres,left:!tyres.left})}>Left</button>
-        <button style={tyres.right?btnRed:btn} onClick={()=>setTyres({...tyres,right:!tyres.right})}>Right</button>
-      </div>
-
-      <div>
-        <strong>Deductions</strong><br/>
-        {deductionsList.map(d=>(
-          <button key={d} onClick={()=>toggleDeduction(d)} style={deductions[d]?btnRed:btn}>{d}</button>
-        ))}
-      </div>
 
       <button style={btnBig} onClick={submit}>Submit</button>
       <button style={btnBig} onClick={buildTop150}>Top 150</button>
@@ -361,10 +273,5 @@ export default function App(){
   );
 }
 
-const input = {display:"block",width:"100%",padding:"14px",marginBottom:"12px"};
-const row = {padding:"14px",marginBottom:"10px",background:"#eee"};
-const btn = {padding:"14px",margin:"6px"};
-const btnRed = {...btn,background:"red",color:"#fff"};
-const btnBlue = {...btn,background:"blue",color:"#fff"};
-const btnGreen = {...btn,background:"green",color:"#fff"};
-const btnBig = {padding:"18px",margin:"12px",background:"#000",color:"#fff"};
+const input = {display:"block",width:"100%",padding:"12px",marginBottom:"10px"};
+const btnBig = {padding:"16px",margin:"10px",background:"#000",color:"#fff"};
