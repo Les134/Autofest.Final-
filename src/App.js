@@ -103,7 +103,6 @@ export default function App(){
 
     var finalScore = total + tyreScore - deductionTotal;
 
-    // 🔥 UNIQUE ID FIX
     var payload = {
       id: Date.now(),
       eventName,
@@ -123,7 +122,6 @@ export default function App(){
 
     addDoc(collection(db,"scores"), payload).catch(function(){});
 
-    // reset
     setScores({});
     setDeductions({});
     setTyres({left:false,right:false});
@@ -136,7 +134,6 @@ export default function App(){
 
     data.forEach(function(e){
 
-      // 🔥 FIXED GROUPING KEY
       var key = e.car || e.rego || e.driver || e.carName || e.id;
 
       if(!combined[key]){
@@ -166,10 +163,42 @@ export default function App(){
     setScreen("top150");
   }
 
+  function printResults(){
+
+    var combined = combineScores();
+
+    var grouped = {};
+    combined.forEach(function(e){
+      var key = (e.carClass||"Unknown")+" - "+(e.gender||"Unknown");
+      if(!grouped[key]) grouped[key]=[];
+      grouped[key].push(e);
+    });
+
+    Object.keys(grouped).forEach(function(k){
+      grouped[k].sort(function(a,b){ return b.total-a.total; });
+    });
+
+    var html = "<h1>"+eventName+" Results</h1>";
+
+    Object.keys(grouped).forEach(function(group){
+
+      html += "<h2>"+group+"</h2>";
+
+      grouped[group].forEach(function(e,i){
+        html += "<div>#"+(i+1)+" | Car: "+(e.car||"-")+" | Driver: "+(e.driver||"-")+" | Score: "+e.total+"</div>";
+      });
+
+    });
+
+    var win = window.open("", "_blank");
+    win.document.write(html);
+    win.document.close();
+    win.print();
+  }
+
   var grouped = {};
   combineScores().forEach(function(e){
     var key = (e.carClass||"Unknown")+" - "+(e.gender||"Unknown");
-
     if(!grouped[key]) grouped[key]=[];
     grouped[key].push(e);
   });
@@ -260,6 +289,7 @@ export default function App(){
           );
         })}
 
+        <button style={btnBig} onClick={printResults}>Print Results</button>
         <button style={btnBig} onClick={function(){setScreen("judge");}}>Back</button>
       </div>
     );
@@ -302,14 +332,12 @@ export default function App(){
         );
       })}
 
-      {/* 🔥 BLOWN TYRES */}
       <div>
         <strong>Blown Tyres (5pts each)</strong><br/>
         <button style={tyres.left?btnRed:btn} onClick={()=>setTyres({...tyres,left:!tyres.left})}>Left</button>
         <button style={tyres.right?btnRed:btn} onClick={()=>setTyres({...tyres,right:!tyres.right})}>Right</button>
       </div>
 
-      {/* DEDUCTIONS */}
       <div>
         <strong>Deductions</strong><br/>
         {deductionsList.map(function(d){
